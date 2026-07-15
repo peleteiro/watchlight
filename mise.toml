@@ -1,0 +1,9 @@
+# Atalaia — dev environment. Tasks are file-based scripts in .config/mise/tasks/.
+[tools]
+# PlatformIO is a Python package — install it via the pipx backend so `pio` is
+# hermetic and reproducible, not dependent on a system/homebrew install.
+"pipx:platformio" = "latest"
+
+[env]
+# Puts `.config/bin` on PATH so the `mr` alias (= mise run) is reachable.
+_.path = ['{{ config_root }}/.config/bin']

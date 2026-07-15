@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Compile the firmware"
+set -euo pipefail
+exec pio run

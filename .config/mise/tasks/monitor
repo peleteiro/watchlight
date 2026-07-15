@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Open the serial monitor (115200 baud)"
+set -euo pipefail
+exec pio device monitor -b 115200

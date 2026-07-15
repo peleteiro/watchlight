@@ -1,0 +1,4 @@
+.pio/
+.vscode/
+# Never commit real credentials. Copy secrets.example.h → secrets.h and fill it in.
+src/secrets.h

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Update the ESP32 platform and library dependencies"
+set -euo pipefail
+exec pio pkg update

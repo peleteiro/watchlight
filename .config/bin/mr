@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Alias para mise run
+
+set -euo pipefail
+
+mise run "$@"
+

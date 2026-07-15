@@ -41,6 +41,21 @@ remaining 24px. It never interprets the values — a screen is just pixels.
 **Why the bitmap travels in the payload:** so a new screen or icon is a server
 deploy, never a firmware flash. At ~1.6 KB per poll it's a rounding error.
 
+## Buttons
+
+The three top-edge buttons drive navigation locally, without touching the server:
+
+| button | action |
+| :--- | :--- |
+| left | previous screen |
+| middle | pause / resume auto-rotation |
+| right | next screen |
+
+Stepping left or right resets the rotation timer, so a manual move never fights an
+auto-advance. Pausing freezes the current screen; new data still fetches in the
+background and the frozen screen refreshes in place. The pins (`26` / `27` / `14`)
+match the TC001 — verify on hardware if a press does nothing on first flash.
+
 ## The offline glyph
 
 If the last successful fetch is older than `staleAfter` (or none has happened

@@ -29,6 +29,13 @@ Adafruit_NeoMatrix matrix(32, 8, MATRIX_PIN,
                           NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE,
                           NEO_GRB + NEO_KHZ800);
 
+// The three top-edge buttons, active-low (internal pull-up, pressed = LOW). Pins
+// match the TC001; verify on hardware if a press does nothing on first flash.
+// Left/right step through screens; the middle button pauses/resumes rotation.
+enum Btn { BTN_LEFT, BTN_MID, BTN_RIGHT, BTN_COUNT };
+static const uint8_t BTN_PINS[BTN_COUNT] = {26, 27, 14};
+static const uint16_t DEBOUNCE_MS = 30;
+
 // ---- Timing / limits -------------------------------------------------------
 static const uint32_t POLL_INTERVAL_MS = 60000;  // how often we fetch the payload
 static const uint8_t MAX_SCREENS = 8;             // caps memory; server sends few
@@ -52,6 +59,12 @@ static uint32_t lastPoll = 0;
 static uint32_t lastRotate = 0;
 static uint32_t lastSuccess = 0;  // millis() of the last good fetch
 static bool haveData = false;
+
+static bool autoRotate = true;    // middle button toggles this
+static bool needsRedraw = true;   // set by rotation or a button; drawn once per tick
+
+static bool btnState[BTN_COUNT] = {false, false, false};   // debounced pressed state
+static uint32_t btnChange[BTN_COUNT] = {0, 0, 0};          // millis() of last accepted edge
 
 // Amber warning triangle — the only glyph baked into the firmware, because when
 // we're offline there's no payload to pull an icon from.
@@ -194,9 +207,38 @@ static bool isStale() {
   return !haveData || (millis() - lastSuccess) > staleAfterMs;
 }
 
+// ---- Buttons ---------------------------------------------------------------
+// Step the current screen by delta (±1), wrapping, and reset the rotation clock
+// so an auto-advance doesn't fire on top of a manual move.
+static void stepScreen(int8_t delta) {
+  if (screenCount == 0) return;
+  currentScreen = (currentScreen + screenCount + delta) % screenCount;
+  lastRotate = millis();
+  needsRedraw = true;
+}
+
+// Poll the buttons, act on each press edge. Simple debounce: ignore any change
+// that lands within DEBOUNCE_MS of the last accepted one for that button.
+static void handleButtons() {
+  uint32_t now = millis();
+  for (uint8_t i = 0; i < BTN_COUNT; i++) {
+    bool raw = digitalRead(BTN_PINS[i]) == LOW;  // active-low
+    if (raw == btnState[i] || now - btnChange[i] < DEBOUNCE_MS) continue;
+    btnState[i] = raw;
+    btnChange[i] = now;
+    if (!raw) continue;  // act on press, not release
+    switch (i) {
+      case BTN_LEFT:  stepScreen(-1); break;
+      case BTN_RIGHT: stepScreen(+1); break;
+      case BTN_MID:   autoRotate = !autoRotate; lastRotate = now; break;
+    }
+  }
+}
+
 // ---- Lifecycle -------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
+  for (uint8_t i = 0; i < BTN_COUNT; i++) pinMode(BTN_PINS[i], INPUT_PULLUP);
   matrix.begin();
   matrix.setBrightness(BRIGHTNESS);
   matrix.setTextColor(matrix.Color(255, 255, 255));
@@ -213,25 +255,34 @@ void setup() {
 void loop() {
   uint32_t now = millis();
 
+  handleButtons();
+
   if (now - lastPoll >= POLL_INTERVAL_MS) {
     lastPoll = now;
     if (fetchScreens()) {
       haveData = true;
       lastSuccess = now;
+      needsRedraw = true;
     }
   }
 
   if (isStale()) {
     drawAlert();
-    delay(500);
+    delay(20);  // short, so a button press still registers promptly
     return;
   }
 
-  if (now - lastRotate >= (uint32_t)rotateSeconds * 1000UL) {
-    lastRotate = now;
-    drawScreen(screens[currentScreen]);
+  // Auto-advance unless the user paused rotation with the middle button.
+  if (autoRotate && now - lastRotate >= (uint32_t)rotateSeconds * 1000UL) {
     currentScreen = (currentScreen + 1) % screenCount;
+    lastRotate = now;
+    needsRedraw = true;
   }
 
-  delay(50);
+  if (needsRedraw) {
+    drawScreen(screens[currentScreen]);
+    needsRedraw = false;
+  }
+
+  delay(20);
 }

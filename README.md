@@ -8,9 +8,9 @@ Every server screen arrives fully formed — text, color, and an 8×8 icon bitma
 so adding, removing, or restyling one is a server change, never a reflash. The
 firmware's only opinions are *how to draw* and *when to admit it's offline*.
 
-The one exception is a pair of **local screens** for data no server could provide —
-the on-board clock and temperature/humidity sensor. They ride in the same rotation
-(see [Local screens](#local-screens)).
+The one exception is a few **local screens** for data no server could provide —
+the on-board clock, the temperature/humidity sensor, and a low-battery warning.
+They ride in the same rotation (see [Local screens](#local-screens)).
 
 Target hardware is the **Ulanzi TC001** (ESP32 + WS2812B matrix), but any ESP32
 board with a compatible 32×8 matrix works by adjusting the pins in `main.cpp`.
@@ -74,10 +74,10 @@ The pins (left `26` / middle `27` / right `14`) match the TC001. The piezo buzze
 
 ## Local screens
 
-Two screens render data the device reads itself, so they work with or without the
-server (and even offline). The hardware was confirmed with an I2C scan: an **SHT3x**
-temp/humidity sensor at `0x44` and a **DS3231** RTC at `0x68`, both on the I2C bus
-(`SDA 21` / `SCL 22`).
+The device also renders a few screens from data it reads itself, so they work with
+or without the server (and even offline). The hardware was confirmed with an I2C
+scan: an **SHT3x** temp/humidity sensor at `0x44` and a **DS3231** RTC at `0x68`,
+both on the I2C bus (`SDA 21` / `SCL 22`).
 
 - **Clock** — a 9px-wide white calendar page with a red header and the
   day-of-month **cut out of the white** (dark digits on the page), then `HH:MM`
@@ -87,6 +87,12 @@ temp/humidity sensor at `0x44` and a **DS3231** RTC at `0x68`, both on the I2C b
   UTC-3). Until the clock is set it shows dashes.
 - **Temperature / humidity** — one panel showing **both at once**: a thermometer
   with the temperature (°C) and, beside it, the humidity (%RH).
+- **Low battery** — appears only when the charge falls to **15% or less**: a gray
+  battery whose red bar **breathes** (fades in and out), with the % beside it. It
+  joins the rotation; and if rotation is paused, a low battery **forces** this
+  screen to the front until the charge recovers. The battery is read on ADC pin
+  `34` — the empty/full raw values in `main.cpp` need **calibrating on hardware**
+  (`mise run monitor` prints `batt=NN% (adc XXXX)` to help).
 
 Numbers on these screens use the same hand-drawn 3×5 digits, for a consistent
 pixel-clock look. They sit after the server screens in the rotation and are
@@ -134,6 +140,9 @@ Confirmed on the Ulanzi TC001. On a different board, check these first:
   pull-ups); piezo buzzer `15`, held low so it stays silent.
 - **Sensors.** I2C `SDA 21` / `SCL 22`; SHT3x temp/humidity at `0x44`, DS3231 RTC
   at `0x68`.
+- **Battery.** Read on ADC pin `34`; the empty/full raw values in `main.cpp` are a
+  starting point — calibrate from `mise run monitor` (`batt=NN% (adc XXXX)`). The
+  SHT3x reads a few degrees high from nearby self-heating.
 - **Deep-sleep wake.** The middle button wakes the ESP32 from deep sleep via `ext0`
   on GPIO 27. If a press won't wake it, that's the pin to check.
 - **Text fit.** With the small font, values up to ~8 characters fit centered in the
@@ -142,3 +151,26 @@ Confirmed on the Ulanzi TC001. On a different board, check these first:
 The clock digits, calendar, thermometer, and the °/% marks are hand-drawn bitmaps
 in `main.cpp` — tweak them there for a different look. `mise run monitor` prints
 boot, WiFi, fetch, NTP, sensor, and button events for troubleshooting.
+
+## References & links
+
+**Hardware**
+
+- [Ulanzi TC001](https://www.aliexpress.com/wholesale?SearchText=Ulanzi%20TC001) — the target 32×8 pixel-clock display (ESP32 + WS2812B), on AliExpress
+
+**Tooling**
+
+- [mise](https://mise.jdx.dev) — task runner and hermetic tool manager (`mise run …`)
+- [PlatformIO](https://platformio.org) — build/flash/monitor toolchain for the ESP32
+
+**Libraries** (see `platformio.ini`)
+
+- [Adafruit NeoMatrix](https://github.com/adafruit/Adafruit_NeoMatrix) + [NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel) — drive the 32×8 WS2812B matrix
+- [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library) — text and graphics primitives (incl. the TomThumb font)
+- [ArduinoJson](https://arduinojson.org) — streaming parse of the payload
+- [RTClib](https://github.com/adafruit/RTClib) — DS3231 real-time clock
+- [Adafruit SHT31](https://github.com/adafruit/Adafruit_SHT31) — SHT3x temperature/humidity sensor
+
+**Icons**
+
+- [LaMetric icon gallery](https://developer.lametric.com/icons) — the 8×8 icons the server sends (each has a numeric ID; the payload carries the RGB bitmap)

@@ -382,6 +382,15 @@ static void drawValue(float v, int16_t x, int16_t y, uint16_t color) {
   drawDigit(n % 10, x + 4, y, color);
 }
 
+// Sensor temperature in °C, corrected for self-heating (TEMP_OFFSET_C in config.h).
+static float readTemperatureC() { return sht.readTemperature() + TEMP_OFFSET_C; }
+
+// Temperature in the configured display unit (TEMP_FAHRENHEIT in config.h).
+static float readTemperatureDisplay() {
+  float c = readTemperatureC();
+  return TEMP_FAHRENHEIT ? c * 9.0f / 5.0f + 32.0f : c;
+}
+
 // Local screen: temperature and humidity together on one panel — a thermometer
 // icon, then NN° (warm) and NN% (cool) side by side, in the clock's 3x5 digits.
 static void drawTempHum() {
@@ -392,8 +401,8 @@ static void drawTempHum() {
   drawGlyph(THERMO_WHITE, white);                    // white thermometer outline …
   drawGlyph(THERMO_RED, matrix.Color(255, 30, 30));  // … over the red mercury
 
-  drawValue(sht.readTemperature(), 9, y, white);  // NN° at cols 9..18
-  matrix.drawPixel(17, y, white);                 // degree ring (2x2, sits high)
+  drawValue(readTemperatureDisplay(), 9, y, white);  // NN° at cols 9..18
+  matrix.drawPixel(17, y, white);                    // degree ring (2x2, sits high)
   matrix.drawPixel(18, y, white);
   matrix.drawPixel(17, y + 1, white);
   matrix.drawPixel(18, y + 1, white);
@@ -622,10 +631,10 @@ void loop() {
       syncClock();
     DateTime t = rtc.now();
     Serial.printf(
-        "[atalaia] poll: screens=%u stale=%d clock=%02d:%02d temp=%.1f hum=%.1f batt=%u%% (adc "
+        "[atalaia] poll: screens=%u stale=%d clock=%02d:%02d temp=%.1f%c hum=%.1f batt=%u%% (adc "
         "%d)\n",
-        screenCount, isStale(), t.hour(), t.minute(), sht.readTemperature(), sht.readHumidity(),
-        batteryPct, analogRead(BATTERY_PIN));
+        screenCount, isStale(), t.hour(), t.minute(), readTemperatureDisplay(),
+        TEMP_FAHRENHEIT ? 'F' : 'C', sht.readHumidity(), batteryPct, analogRead(BATTERY_PIN));
   }
 
   uint8_t total = totalSlots();

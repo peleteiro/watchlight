@@ -68,9 +68,16 @@ static const uint8_t MAX_SCREENS = 16;           // caps memory; server sends fe
 static const uint16_t DEFAULT_ROTATE_S = 8;
 static const uint32_t DEFAULT_STALE_S = 1800;  // 30 min, until the server says otherwise
 
-static const uint8_t LOCAL_SCREENS = 2;                    // clock + temp/humidity, always shown
 static const uint32_t CLOCK_SYNC_MS = 12UL * 3600 * 1000;  // re-sync RTC from NTP twice a day
 static const uint16_t TEMPHUM_REFRESH_MS = 2000;           // how often the sensor screen re-reads
+
+// Battery. The TC001 reads its LiPo on an ADC pin; the pin and the empty/full raw
+// values are board-specific — calibrate on hardware (log analogRead(BATTERY_PIN)
+// at a known low and full charge). Until then the % (and the low screen) is rough.
+static const uint8_t BATTERY_PIN = 34;
+static const uint8_t LOW_BATTERY_PCT = 15;       // show the battery screen at/below this
+static const uint16_t BATTERY_ADC_EMPTY = 2150;  // estimated (≈3.3V); refine from a low-charge read
+static const uint16_t BATTERY_ADC_FULL = 2742;   // measured on hardware at full charge (≈4.2V)
 
 // ---- Screen model ----------------------------------------------------------
 struct Screen {
@@ -106,6 +113,7 @@ static bool clockValid = false;     // RTC holds a trusted time (from NTP or kep
 static bool clockSynced = false;    // NTP has set the RTC at least once this boot
 static uint32_t lastClockSync = 0;  // millis() of the last NTP sync
 static uint32_t lastLocalTick = 0;  // paces the in-place refresh of the active local screen
+static uint8_t batteryPct = 100;    // battery %, refreshed each poll
 
 // Glyphs baked into the firmware. The alert is drawn when we're offline (no
 // payload to pull an icon from). The thermometer marks the sensor screen and is
@@ -137,6 +145,13 @@ static const uint8_t DIGITS_3x5[10][5] = {
 };
 // A 3x5 percent sign for the humidity screen, same grid as the digits.
 static const uint8_t PERCENT_3x5[5] = {0b101, 0b001, 0b010, 0b100, 0b101};
+
+// Low-battery screen (from LaMetric icon 12123): a gray battery outline whose red
+// bar breathes (fades in and out).
+static const uint8_t BATTERY_GLYPH[8] = {0b00011000, 0b00111100, 0b00100100, 0b00100100,
+                                         0b00100100, 0b00100100, 0b00100100, 0b00111100};
+static const uint8_t BATTERY_BAR[8] = {0b00000000, 0b00000000, 0b00000000, 0b00000000,
+                                       0b00000000, 0b00000000, 0b00011000, 0b00000000};
 
 // ---- Color helpers ---------------------------------------------------------
 static uint8_t hexPair(const char *s) {
@@ -389,13 +404,41 @@ static void drawTempHum() {
   matrix.show();
 }
 
+// Read the battery ADC and map to 0-100%. Pin and calibration are TC001-specific.
+static uint8_t batteryPercent() {
+  int raw = analogRead(BATTERY_PIN);
+  if (raw <= BATTERY_ADC_EMPTY) return 0;
+  if (raw >= BATTERY_ADC_FULL) return 100;
+  return (uint8_t)((long)(raw - BATTERY_ADC_EMPTY) * 100 / (BATTERY_ADC_FULL - BATTERY_ADC_EMPTY));
+}
+
+static bool batteryLow() { return batteryPct <= LOW_BATTERY_PCT; }
+
+// Local screen, only present when the battery is low: a gray battery whose red bar
+// breathes (fades in/out), with the percentage beside it.
+static void drawBattery() {
+  matrix.fillScreen(0);
+  drawGlyph(BATTERY_GLYPH, matrix.Color(0xcc, 0xce, 0xcc));  // gray outline
+  uint32_t ph = millis() % 1400;                             // red bar: fade in then out
+  uint8_t b = ph < 700 ? (uint8_t)(ph * 255 / 700) : (uint8_t)((1400 - ph) * 255 / 700);
+  drawGlyph(BATTERY_BAR, matrix.Color(0xf4 * b / 255, 0x02 * b / 255, 0x14 * b / 255));
+
+  const uint16_t red = matrix.Color(255, 60, 60);
+  drawDigit(batteryPct / 10, 11, 2, red);
+  drawDigit(batteryPct % 10, 15, 2, red);
+  draw3x5(PERCENT_3x5, 19, 2, red);
+  matrix.show();
+}
+
 static bool isStale() { return !haveData || (millis() - lastSuccess) > staleAfterMs; }
 
-// The rotation is [primary slots] + [clock] + [temp/humidity]. The primary slots
-// are the server screens when fresh, or a single offline glyph when stale — so we
-// never show a stale server number, but the local screens stay visible either way.
+// The rotation is [primary slots] + [clock] + [temp/humidity] + [battery, if low].
+// The primary slots are the server screens when fresh, or a single offline glyph
+// when stale — so we never show a stale server number, but the local screens stay
+// visible either way.
 static uint8_t primarySlots() { return isStale() ? 1 : screenCount; }
-static uint8_t totalSlots() { return primarySlots() + LOCAL_SCREENS; }
+static uint8_t localSlots() { return batteryLow() ? 3 : 2; }  // clock, temp/hum, [battery]
+static uint8_t totalSlots() { return primarySlots() + localSlots(); }
 
 static void drawCurrent() {
   uint8_t primary = primarySlots();
@@ -404,10 +447,18 @@ static void drawCurrent() {
       drawAlert();
     else
       drawScreen(screens[currentScreen]);
-  } else if (currentScreen == primary) {
-    drawClock();
   } else {
-    drawTempHum();
+    switch (currentScreen - primary) {
+      case 0:
+        drawClock();
+        break;
+      case 1:
+        drawTempHum();
+        break;
+      default:
+        drawBattery();
+        break;
+    }
   }
 }
 
@@ -537,6 +588,7 @@ void setup() {
   Serial.printf("[atalaia] rtc.begin=%d lostPower=%d  sht.begin=%d\n", rtc.begin(), rtc.lostPower(),
                 sht.begin(0x44));
   if (!rtc.lostPower()) clockValid = true;  // the RTC battery kept a real time
+  batteryPct = batteryPercent();
 
   if (fetchScreens()) {
     haveData = true;
@@ -560,6 +612,7 @@ void loop() {
 
   if (now - lastPoll >= POLL_INTERVAL_MS) {
     lastPoll = now;
+    batteryPct = batteryPercent();
     if (fetchScreens()) {
       haveData = true;
       lastSuccess = now;
@@ -568,13 +621,25 @@ void loop() {
     if (WiFi.status() == WL_CONNECTED && (!clockSynced || now - lastClockSync >= CLOCK_SYNC_MS))
       syncClock();
     DateTime t = rtc.now();
-    Serial.printf("[atalaia] poll: screens=%u stale=%d clock=%02d:%02d temp=%.1f hum=%.1f\n",
-                  screenCount, isStale(), t.hour(), t.minute(), sht.readTemperature(),
-                  sht.readHumidity());
+    Serial.printf(
+        "[atalaia] poll: screens=%u stale=%d clock=%02d:%02d temp=%.1f hum=%.1f batt=%u%% (adc "
+        "%d)\n",
+        screenCount, isStale(), t.hour(), t.minute(), sht.readTemperature(), sht.readHumidity(),
+        batteryPct, analogRead(BATTERY_PIN));
   }
 
   uint8_t total = totalSlots();
-  if (currentScreen >= total) {  // rotation shrank (e.g. went stale); wrap back in
+  uint8_t primary = primarySlots();
+
+  // Low battery + rotation paused → force the battery warning to the front (and
+  // hold it there). When rotation is on, the battery screen just joins the cycle.
+  if (batteryLow() && !autoRotate && currentScreen != primary + 2) {
+    currentScreen = primary + 2;
+    lastLocalTick = now;
+    needsRedraw = true;
+  }
+
+  if (currentScreen >= total) {  // rotation shrank (stale, or battery recovered); wrap in
     currentScreen = 0;
     needsRedraw = true;
   }
@@ -587,14 +652,16 @@ void loop() {
     needsRedraw = true;
   }
 
-  // Local screens refresh in place while shown: the clock ticks every second, the
-  // temp/humidity screen alternates between its two readings.
-  uint8_t primary = primarySlots();
-  if (currentScreen == primary && now - lastLocalTick >= 60) {  // fast refresh for the colon fade
+  // Local screens refresh in place while shown: the clock's colon fades, the sensor
+  // screen re-reads, the low-battery bar breathes.
+  if (currentScreen == primary && now - lastLocalTick >= 60) {  // clock (colon fade)
     lastLocalTick = now;
     needsRedraw = true;
   } else if (currentScreen == primary + 1 && now - lastLocalTick >= TEMPHUM_REFRESH_MS) {
-    lastLocalTick = now;  // refresh the sensor readings in place
+    lastLocalTick = now;  // sensor readings
+    needsRedraw = true;
+  } else if (currentScreen == primary + 2 && now - lastLocalTick >= 60) {  // battery (bar fade)
+    lastLocalTick = now;
     needsRedraw = true;
   }
 

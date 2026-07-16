@@ -44,8 +44,8 @@ Adafruit_NeoMatrix matrix(32, 8, MATRIX_PIN,
 enum Btn { BTN_LEFT, BTN_MID, BTN_RIGHT, BTN_COUNT };
 static const uint8_t BTN_PINS[BTN_COUNT] = {26, 27, 14};
 static const uint16_t DEBOUNCE_MS = 30;
-static const uint16_t DOUBLE_CLICK_MS = 500;   // window to catch a second middle click
-static const uint16_t HOLD_OFF_MS = 5000;      // hold the middle button this long → deep sleep
+static const uint16_t DOUBLE_CLICK_MS = 500;  // window to catch a second middle click
+static const uint16_t HOLD_OFF_MS = 5000;     // hold the middle button this long → deep sleep
 
 // The piezo buzzer. Left floating it squeals, so we hold it low at boot (the way
 // the stock firmware does) and otherwise never touch it.
@@ -64,13 +64,13 @@ Adafruit_SHT31 sht;
 
 // ---- Timing / limits -------------------------------------------------------
 static const uint32_t POLL_INTERVAL_MS = 60000;  // how often we fetch the payload
-static const uint8_t MAX_SCREENS = 16;            // caps memory; server sends few
+static const uint8_t MAX_SCREENS = 16;           // caps memory; server sends few
 static const uint16_t DEFAULT_ROTATE_S = 8;
 static const uint32_t DEFAULT_STALE_S = 1800;  // 30 min, until the server says otherwise
 
-static const uint8_t LOCAL_SCREENS = 2;                     // clock + temp/humidity, always shown
+static const uint8_t LOCAL_SCREENS = 2;                    // clock + temp/humidity, always shown
 static const uint32_t CLOCK_SYNC_MS = 12UL * 3600 * 1000;  // re-sync RTC from NTP twice a day
-static const uint16_t TEMPHUM_REFRESH_MS = 2000;          // how often the sensor screen re-reads
+static const uint16_t TEMPHUM_REFRESH_MS = 2000;           // how often the sensor screen re-reads
 
 // ---- Screen model ----------------------------------------------------------
 struct Screen {
@@ -90,38 +90,35 @@ static uint32_t lastRotate = 0;
 static uint32_t lastSuccess = 0;  // millis() of the last good fetch
 static bool haveData = false;
 
-static bool autoRotate = true;    // a single middle click toggles this
-static bool displayOn = true;     // a double middle click drops to standby
-static bool needsRedraw = true;   // set by rotation or a button; drawn once per tick
+static bool autoRotate = true;   // a single middle click toggles this
+static bool displayOn = true;    // a double middle click drops to standby
+static bool needsRedraw = true;  // set by rotation or a button; drawn once per tick
 
-static bool btnState[BTN_COUNT] = {false, false, false};   // debounced pressed state
-static uint32_t btnChange[BTN_COUNT] = {0, 0, 0};          // millis() of last accepted edge
-static uint8_t midClicks = 0;         // middle clicks counted inside the double-click window
-static uint32_t midLastRelease = 0;   // millis() of the last middle release
-static bool midWaking = false;        // the press that woke from standby isn't a click
-static uint32_t midPressStart = 0;    // millis() the middle button went down (for hold-to-off)
-static bool midHeldFired = false;     // the current hold already triggered power-off
+static bool btnState[BTN_COUNT] = {false, false, false};  // debounced pressed state
+static uint32_t btnChange[BTN_COUNT] = {0, 0, 0};         // millis() of last accepted edge
+static uint8_t midClicks = 0;        // middle clicks counted inside the double-click window
+static uint32_t midLastRelease = 0;  // millis() of the last middle release
+static bool midWaking = false;       // the press that woke from standby isn't a click
+static uint32_t midPressStart = 0;   // millis() the middle button went down (for hold-to-off)
+static bool midHeldFired = false;    // the current hold already triggered power-off
 
-static bool clockValid = false;       // RTC holds a trusted time (from NTP or kept by its battery)
-static bool clockSynced = false;      // NTP has set the RTC at least once this boot
-static uint32_t lastClockSync = 0;    // millis() of the last NTP sync
-static uint32_t lastLocalTick = 0;    // paces the in-place refresh of the active local screen
+static bool clockValid = false;     // RTC holds a trusted time (from NTP or kept by its battery)
+static bool clockSynced = false;    // NTP has set the RTC at least once this boot
+static uint32_t lastClockSync = 0;  // millis() of the last NTP sync
+static uint32_t lastLocalTick = 0;  // paces the in-place refresh of the active local screen
 
 // Glyphs baked into the firmware. The alert is drawn when we're offline (no
 // payload to pull an icon from). The thermometer marks the sensor screen and is
 // two-toned: a white outline (THERMO_WHITE) over a red mercury column and bulb
 // (THERMO_RED). Each is an 8x8 bitmap, MSB = leftmost column.
 static const uint8_t ALERT_GLYPH[8] = {
-    0b00011000, 0b00011000, 0b00111100, 0b00100100,
-    0b01100110, 0b01111110, 0b01100110, 0b11111111,
+    0b00011000, 0b00011000, 0b00111100, 0b00100100, 0b01100110, 0b01111110, 0b01100110, 0b11111111,
 };
 static const uint8_t THERMO_WHITE[8] = {
-    0b00111100, 0b00100100, 0b00100100, 0b00100100,
-    0b01100110, 0b01000010, 0b01000010, 0b00111100,
+    0b00111100, 0b00100100, 0b00100100, 0b00100100, 0b01100110, 0b01000010, 0b01000010, 0b00111100,
 };
 static const uint8_t THERMO_RED[8] = {
-    0b00000000, 0b00000000, 0b00000000, 0b00011000,
-    0b00011000, 0b00111100, 0b00111100, 0b00000000,
+    0b00000000, 0b00000000, 0b00000000, 0b00011000, 0b00011000, 0b00111100, 0b00111100, 0b00000000,
 };
 
 // 3x5 pixel digits 0-9 for the clock screen. Each row uses the low 3 bits, bit 2
@@ -278,8 +275,8 @@ static void drawScreen(const Screen &s) {
   matrix.getTextBounds(s.text, 0, 0, &bx, &by, &bw, &bh);
   int16_t tx = 8 + (24 - (int16_t)bw) / 2;  // region is cols 8..31
   int16_t ty = (8 - (int16_t)bh) / 2 + 1;   // one pixel below center reads better here
-  if (tx < 8) tx = 8;  // oversized text starts flush and crops on the right
-  matrix.setCursor(tx - bx, ty - by);  // place the text box's top-left at (tx, ty)
+  if (tx < 8) tx = 8;                       // oversized text starts flush and crops on the right
+  matrix.setCursor(tx - bx, ty - by);       // place the text box's top-left at (tx, ty)
   matrix.setTextColor(s.textColor);
   matrix.print(s.text);
   matrix.show();
@@ -340,9 +337,9 @@ static void drawClock() {
     drawDigit(hh % 10, x + 4, y, white);
     // Colon: on for most of the second, then a quick fade-out and fade-in.
     uint32_t ph = millis() % 1000;
-    uint8_t cb = ph < 750 ? 255
-                 : ph < 875 ? (uint8_t)(255 - (ph - 750) * 255 / 125)   // fade out
-                            : (uint8_t)((ph - 875) * 255 / 125);         // fade in
+    uint8_t cb = ph < 750   ? 255
+                 : ph < 875 ? (uint8_t)(255 - (ph - 750) * 255 / 125)  // fade out
+                            : (uint8_t)((ph - 875) * 255 / 125);       // fade in
     uint16_t colon = matrix.Color(cb, cb, cb);
     matrix.drawPixel(x + 8, y + 1, colon);
     matrix.drawPixel(x + 8, y + 3, colon);
@@ -377,7 +374,7 @@ static void drawTempHum() {
   const uint16_t white = matrix.Color(255, 255, 255);
   const uint16_t cool = matrix.Color(100, 180, 255);
   const int16_t y = 2;
-  drawGlyph(THERMO_WHITE, white);              // white thermometer outline …
+  drawGlyph(THERMO_WHITE, white);                    // white thermometer outline …
   drawGlyph(THERMO_RED, matrix.Color(255, 30, 30));  // … over the red mercury
 
   drawValue(sht.readTemperature(), 9, y, white);  // NN° at cols 9..18
@@ -386,15 +383,13 @@ static void drawTempHum() {
   matrix.drawPixel(17, y + 1, white);
   matrix.drawPixel(18, y + 1, white);
 
-  drawValue(sht.readHumidity(), 20, y, cool);     // NN% at cols 20..30
+  drawValue(sht.readHumidity(), 20, y, cool);  // NN% at cols 20..30
   draw3x5(PERCENT_3x5, 28, y, cool);
 
   matrix.show();
 }
 
-static bool isStale() {
-  return !haveData || (millis() - lastSuccess) > staleAfterMs;
-}
+static bool isStale() { return !haveData || (millis() - lastSuccess) > staleAfterMs; }
 
 // The rotation is [primary slots] + [clock] + [temp/humidity]. The primary slots
 // are the server screens when fresh, or a single offline glyph when stale — so we
@@ -405,8 +400,10 @@ static uint8_t totalSlots() { return primarySlots() + LOCAL_SCREENS; }
 static void drawCurrent() {
   uint8_t primary = primarySlots();
   if (currentScreen < primary) {
-    if (isStale()) drawAlert();
-    else drawScreen(screens[currentScreen]);
+    if (isStale())
+      drawAlert();
+    else
+      drawScreen(screens[currentScreen]);
   } else if (currentScreen == primary) {
     drawClock();
   } else {
@@ -537,8 +534,8 @@ void setup() {
   matrix.show();
 
   Wire.begin(I2C_SDA, I2C_SCL);
-  Serial.printf("[atalaia] rtc.begin=%d lostPower=%d  sht.begin=%d\n", rtc.begin(),
-                rtc.lostPower(), sht.begin(0x44));
+  Serial.printf("[atalaia] rtc.begin=%d lostPower=%d  sht.begin=%d\n", rtc.begin(), rtc.lostPower(),
+                sht.begin(0x44));
   if (!rtc.lostPower()) clockValid = true;  // the RTC battery kept a real time
 
   if (fetchScreens()) {

@@ -3,6 +3,11 @@
 A watchman for a 32×8 pixel display. It polls a JSON endpoint, rotates through the
 screens it returns, and lights an alert when it can no longer reach fresh data.
 
+**Atalaia** is Portuguese for *watchtower* — the lookout post, and the sentinel who
+keeps watch from it. That's the device's one job, and the rule it never breaks:
+keep watch over the data and, the moment it can't see anything fresh, raise the
+alarm rather than show a stale number wearing a fresh face.
+
 Atalaia is **content-agnostic**: it knows nothing about the *business* it shows.
 Every server screen arrives fully formed — text, color, and an 8×8 icon bitmap —
 so adding, removing, or restyling one is a server change, never a reflash. The

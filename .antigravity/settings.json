@@ -1,0 +1,32 @@
+{
+  "toolPermission": "proceed-in-sandbox",
+  "artifactReviewPolicy": "always-proceed",
+  "allowNonWorkspaceAccess": false,
+  "enableTerminalSandbox": true,
+  "permissions": {
+    "allow": [
+      "command(*)",
+      "command(git)",
+      "read_url(*)",
+      "execute_url(*)",
+      "mcp(*)"
+    ],
+    "deny": [
+      "command(git push --force)",
+      "command(git push -f)",
+      "command(git push --force-with-lease)",
+      "command(git commit --no-verify)",
+      "command(pio)",
+      "command(platformio)",
+      "command(env pio)",
+      "command(env platformio)",
+      "command(mise exec -- pio)",
+      "command(mise exec -- platformio)",
+      "command(python -m platformio)",
+      "command(python3 -m platformio)",
+      "command(rm -rf /)",
+      "command(rm -rf .git)",
+      "command(docker system prune)"
+    ]
+  }
+}

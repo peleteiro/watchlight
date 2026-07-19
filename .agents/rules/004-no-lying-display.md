@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Rule: the display must never lie
 
 Atalaia's core promise: it shows fresh data or it shows the offline glyph — never

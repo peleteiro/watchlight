@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Short alias for the Antigravity CLI installed by mise.
+set -euo pipefail
+
+exec antigravity "$@"

@@ -1,7 +1,8 @@
 # Atalaia — Agent Guide
 
-Single source of truth for AI agents (Claude Code, Codex, Antigravity) working on
-this repo. `CLAUDE.md` and `GEMINI.md` are symlinks to this file.
+Single source of truth for AI agents (Claude Code, Codex, Antigravity 2) working
+on this repo. `CLAUDE.md` is a symlink to this file; Codex and Antigravity read
+it natively.
 
 ## What this is
 
@@ -15,8 +16,9 @@ Read `README.md` for the payload contract before touching rendering or fetch cod
 ## Golden rules
 
 1. **Task runner is `mise`.** Never call `pio` directly in docs or scripts — use
-   `mise run build` / `upload` / `monitor` / `clean`. Tasks are file-based scripts
-   in `.config/mise/tasks/`, never inline in `.mise.toml`.
+   the `mise run build` / `check` / `lint` / `upload` / `monitor` / `upgrade` /
+   `clean` tasks. Tasks are file-based scripts in `.config/mise/tasks/`, never
+   inline in `.mise.toml`.
 2. **Never commit `src/secrets.h`.** It holds WiFi passwords and the API token and
    is gitignored. Edits to the *shape* of secrets go in `src/secrets.example.h`.
 3. **The device must never lie.** If data is older than `staleAfter`, show the
@@ -51,8 +53,11 @@ Read `README.md` for the payload contract before touching rendering or fetch cod
 | `src/config.h` | Non-secret config (clock timezone, NTP servers). Committed — edit in place. |
 | `src/secrets.example.h` | Template for credentials. Copy to `src/secrets.h` (gitignored). |
 | `platformio.ini` | Board, framework, library deps, `upload_speed`. |
-| `.config/mise/tasks/` | File-based mise tasks (build/upload/monitor/clean). |
-| `.agents/` | Agent skills + rules. `.claude/` symlinks into here. |
+| `.config/mise/tasks/` | File-based mise tasks for build, checks, formatting, flashing, monitoring, upgrades, and cleanup. |
+| `.agents/` | Shared agent skills, always-on rules, and the Antigravity MCP config. |
+| `.claude/` | Claude project settings, format hook, and skills symlink. |
+| `.codex/` | Codex sandbox, command policy, and format hook. |
+| `.antigravity/` | Antigravity 2 project permissions. |
 
 ## Hardware (Ulanzi TC001), confirmed on device
 
@@ -76,6 +81,40 @@ mise run clean     # wipe build artifacts
 
 First build downloads the ESP32 toolchain (~minutes). Flashing needs the device on
 USB; the port is auto-detected.
+
+## AI assistants
+
+All three assistants share `AGENTS.md` and `.agents/skills/` as their source of
+instructions. Claude reaches them through `CLAUDE.md` and `.claude/skills`; Codex
+and Antigravity 2 discover both paths natively. `GEMINI.md` is intentionally absent
+because it belongs to the legacy Gemini Code Assist setup, not Antigravity 2.
+
+| Assistant | Project-scoped configuration |
+| :--- | :--- |
+| Claude Code | `.claude/settings.json` |
+| Codex | `.codex/config.toml` and `.codex/rules/default.rules` |
+| Antigravity 2 | `.antigravity/settings.json` and `.agents/mcp_config.json` |
+
+The CLIs are installed by `mise`; use `mise exec -- claude`, `mise exec -- codex`,
+or `mise exec -- antigravity` (`agy` is the short alias). Codex asks you to trust
+the project on first use; then review and trust the project hook with `/hooks`.
+For Antigravity 2, open this repository as a Project folder; its
+`.agents/rules/` files are marked `always_on`.
+
+Claude and Codex run `clang-format` on edited firmware files through their
+`PostToolUse` hooks. Antigravity uses the IDE's format-on-save support, and
+`lefthook` remains the final formatting guard for all three. The shared settings
+contain mechanical guardrails for the canonical direct forms of `pio` /
+`platformio`, force pushes, skipped commit hooks, and the destructive system
+commands listed in each tool's settings. Permission matchers are prefix-based,
+so the golden rules remain authoritative for reordered, wrapped, or aliased
+equivalents. Codex also prompts before direct `git add`, `commit`, and `push`
+commands. Rule 9 still applies: ordinary commits, staging, and pushes happen only
+when the user explicitly asks.
+
+There are currently no project-specific MCP servers, so
+`.agents/mcp_config.json` contains an empty `mcpServers` object rather than
+inheriting unrelated web or infrastructure servers from another repository.
 
 ## Consumers
 

@@ -1,8 +1,49 @@
 {
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": ["Bash", "Edit", "Write", "Read", "Glob", "Grep", "WebFetch", "WebSearch", "Skill", "Task"],
-    "deny": ["Bash(rm -rf /)", "Bash(rm -rf .git)", "Bash(docker system prune:*)"]
+    "allow": [
+      "Bash",
+      "Edit",
+      "Write",
+      "Read",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "Skill",
+      "Task"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git commit --no-verify:*)",
+      "Bash(pio:*)",
+      "Bash(platformio:*)",
+      "Bash(env pio:*)",
+      "Bash(env platformio:*)",
+      "Bash(mise exec -- pio:*)",
+      "Bash(mise exec -- platformio:*)",
+      "Bash(python -m platformio:*)",
+      "Bash(python3 -m platformio:*)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf .git)",
+      "Bash(docker system prune:*)"
+    ]
   },
-  "respectGitignore": true
+  "respectGitignore": true,
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/format.sh\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
 }

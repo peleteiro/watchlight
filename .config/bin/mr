@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Alias para mise run
+# Short alias for mise run.
 
 set -euo pipefail
 
 mise run "$@"
-

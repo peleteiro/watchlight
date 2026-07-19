@@ -1,0 +1,104 @@
+# Project exec policy. Codex evaluates compound commands one segment at a time.
+# Check it with: codex execpolicy check --rules .codex/rules/default.rules -- <command>
+
+# Git is available, but history rewrites and skipped hooks are never allowed.
+prefix_rule(
+    pattern = ["git"],
+    decision = "allow",
+    justification = "Git commands are available; AGENTS.md still controls when writes are authorized.",
+)
+
+# Rule 9 requires explicit user authorization for staging, commits, and pushes.
+# Requiring approval here adds friction even when a dangerous flag is reordered.
+prefix_rule(
+    pattern = ["git", ["add", "commit", "push"]],
+    decision = "prompt",
+    justification = "Stage, commit, or push only after the user explicitly requests it.",
+    match = ["git add .", "git commit -m change", "git push origin main"],
+    not_match = ["git status"],
+)
+
+# Git accepts global options before its subcommand. Prompt on those forms because
+# a prefix rule cannot inspect the later argument positions.
+prefix_rule(
+    pattern = ["git", ["-C", "-c"]],
+    decision = "prompt",
+    justification = "Git global options can hide a later write; review the full command.",
+    match = ["git -C . status", "git -c color.ui=false status"],
+    not_match = ["git status"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--force"],
+    decision = "forbidden",
+    justification = "Force push rewrites remote history.",
+)
+
+prefix_rule(
+    pattern = ["git", "push", "-f"],
+    decision = "forbidden",
+    justification = "Force push rewrites remote history.",
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--force-with-lease"],
+    decision = "forbidden",
+    justification = "Force push rewrites remote history.",
+)
+
+prefix_rule(
+    pattern = ["git", "commit", "--no-verify"],
+    decision = "forbidden",
+    justification = "Commits must run the repository validation hooks.",
+)
+
+# PlatformIO must only run behind the repository's file-based mise tasks.
+prefix_rule(
+    pattern = ["pio"],
+    decision = "forbidden",
+    justification = "Use the corresponding mise task instead of calling pio directly.",
+)
+
+prefix_rule(
+    pattern = ["platformio"],
+    decision = "forbidden",
+    justification = "Use the corresponding mise task instead of calling platformio directly.",
+)
+
+# Cover the common wrappers too. Prefix policies are guardrails; AGENTS.md remains
+# authoritative for other aliases or reordered wrapper arguments.
+prefix_rule(
+    pattern = ["env", ["pio", "platformio"]],
+    decision = "forbidden",
+    justification = "Use the corresponding mise task instead of wrapping PlatformIO with env.",
+)
+
+prefix_rule(
+    pattern = ["mise", "exec", "--", ["pio", "platformio"]],
+    decision = "forbidden",
+    justification = "Use mise run tasks rather than invoking PlatformIO through mise exec.",
+)
+
+prefix_rule(
+    pattern = [["python", "python3"], "-m", "platformio"],
+    decision = "forbidden",
+    justification = "Use the corresponding mise task instead of invoking PlatformIO as a Python module.",
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf", "/"],
+    decision = "forbidden",
+    justification = "This command would erase the system root.",
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf", ".git"],
+    decision = "forbidden",
+    justification = "This command would destroy the repository history.",
+)
+
+prefix_rule(
+    pattern = ["docker", "system", "prune"],
+    decision = "forbidden",
+    justification = "This command removes shared Docker data outside the project scope.",
+)

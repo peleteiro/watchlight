@@ -1,0 +1,18 @@
+# Project-scoped Codex configuration, versioned alongside Claude and Antigravity.
+# AGENTS.md and .agents/skills are discovered natively; command denies live in
+# .codex/rules/default.rules.
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true
+
+# Format edited firmware files after apply_patch, matching Claude's edit hook.
+[[hooks.PostToolUse]]
+matcher = "apply_patch"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = 'bash "$(git rev-parse --show-toplevel)/.codex/hooks/format.sh"'
+timeout = 60

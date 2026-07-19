@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Rule: read AGENTS.md first
 
 Before doing anything in this repo, read `AGENTS.md` (root). It is the single

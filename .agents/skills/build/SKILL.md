@@ -1,20 +1,23 @@
 ---
 name: build
-description: Build, flash, and monitor the Atalaia firmware via mise
+description: Build, check, format, flash, and monitor the Atalaia firmware via mise
 ---
 
 # build
 
-Compile, flash, and observe the Atalaia firmware. Always go through `mise`, never
-raw `pio`.
+Compile, check, format, flash, and observe the Atalaia firmware. Always go through
+`mise`, never raw `pio` or `platformio`.
 
 ## Commands
 
 - `mise run build` — compile only. First run downloads the ESP32 toolchain and
   libraries (several minutes); later runs are fast.
+- `mise run check` — run PlatformIO static analysis.
+- `mise run lint` — format the tracked firmware sources with clang-format.
 - `mise run upload` — build and flash over USB. The device must be connected; the
   serial port is auto-detected.
 - `mise run monitor` — open the serial monitor at 115200 baud to read logs.
+- `mise run upgrade` — update the ESP32 platform and firmware libraries.
 - `mise run clean` — remove build artifacts (`.pio/`).
 
 ## After flashing — verify on hardware

@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Rule: never commit secrets
 
 `src/secrets.h` holds WiFi passwords and the API token. It is gitignored and must

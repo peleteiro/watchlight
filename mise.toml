@@ -2,6 +2,8 @@
 [tools]
 # uv backs the pipx installs below (hermetic Python tooling, no system pipx).
 "uv" = "latest"
+# jq parses the project hooks' JSON payloads.
+"jq" = "1"
 # PlatformIO is a Python package — install it via the pipx backend so `pio` is
 # hermetic and reproducible, not dependent on a system/homebrew install.
 "pipx:platformio" = "latest"
@@ -10,6 +12,17 @@
 # lefthook manages the git hooks (runs the formatter on commit).
 "lefthook" = "latest"
 
+# AI agent CLIs, matching the shared Claude/Codex/Antigravity setup.
+"aqua:anthropics/claude-code" = "2"
+"codex" = "0"
+# The release archive contains an `antigravity` binary, not the repository name.
+"github:google-antigravity/antigravity-cli" = { version = "1", exe = "antigravity" }
+
 [env]
 # Puts `.config/bin` on PATH so the `mr` alias (= mise run) is reachable.
 _.path = ['{{ config_root }}/.config/bin']
+
+[settings]
+experimental = true
+lockfile = true
+auto_install = true

@@ -65,8 +65,9 @@ Adafruit_SHT31 sht;
 // ---- Timing / limits -------------------------------------------------------
 static const uint32_t POLL_INTERVAL_MS = 60000;  // how often we fetch the payload
 static const uint8_t MAX_SCREENS = 16;           // caps memory; server sends few
-static const uint16_t DEFAULT_ROTATE_S = 8;
-static const uint32_t DEFAULT_STALE_S = 1800;  // 30 min, until the server says otherwise
+static const uint32_t SCREEN_ROTATION_INTERVAL_MS = (uint32_t)SCREEN_ROTATION_SECONDS * 1000UL;
+static const uint32_t DEFAULT_STALE_S = 1800;             // 30 min, until the server says otherwise
+static const uint32_t MAX_STALE_S = UINT32_MAX / 1000UL;  // avoid overflow converting to ms
 
 static const uint32_t CLOCK_SYNC_MS = 12UL * 3600 * 1000;  // re-sync RTC from NTP twice a day
 static const uint16_t TEMPHUM_REFRESH_MS = 2000;           // how often the sensor screen re-reads
@@ -89,7 +90,6 @@ struct Screen {
 static Screen screens[MAX_SCREENS];
 static uint8_t screenCount = 0;
 static uint8_t currentScreen = 0;
-static uint16_t rotateSeconds = DEFAULT_ROTATE_S;
 static uint32_t staleAfterMs = DEFAULT_STALE_S * 1000UL;
 
 static uint32_t lastPoll = 0;
@@ -164,24 +164,47 @@ static uint8_t hexPair(const char *s) {
   return (nib(s[0]) << 4) | nib(s[1]);
 }
 
-// "#rrggbb" or "rrggbb" → RGB565
+static bool isWebColor(const char *hex) {
+  if (hex == nullptr || strlen(hex) != 7 || hex[0] != '#') return false;
+  for (uint8_t i = 1; i < 7; i++) {
+    char c = hex[i];
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return false;
+  }
+  return true;
+}
+
+static bool isDisplayText(const char *text) {
+  if (text == nullptr || strlen(text) > 15) return false;
+  for (const char *c = text; *c != '\0'; c++)
+    if (*c < 0x20 || *c > 0x7e) return false;
+  return true;
+}
+
+// Web-style "#rrggbb" → RGB565. Invalid values render as black.
 static uint16_t parseColor(const char *hex) {
-  if (hex[0] == '#') hex++;
+  if (!isWebColor(hex)) return 0;
+  hex++;
   uint8_t r = hexPair(hex), g = hexPair(hex + 2), b = hexPair(hex + 4);
   return matrix.Color(r, g, b);
 }
 
-// 384-char hex string (64 pixels × rrggbb) → icon[64] in RGB565
-static void parseIcon(const char *hex, uint16_t out[64]) {
-  size_t len = strlen(hex);
-  for (uint8_t i = 0; i < 64; i++) {
-    size_t off = (size_t)i * 6;
-    if (off + 6 > len) {
-      out[i] = 0;
-      continue;
-    }
-    out[i] = matrix.Color(hexPair(hex + off), hexPair(hex + off + 2), hexPair(hex + off + 4));
+// 8 rows × 8 web colors → icon[64] in row-major RGB565. Validate the complete
+// matrix before writing so a malformed icon cannot partially replace a screen.
+static bool parseIcon(JsonArray rows, uint16_t *out) {
+  if (rows.size() != 8) return false;
+  for (uint8_t y = 0; y < 8; y++) {
+    JsonArray row = rows[y].as<JsonArray>();
+    if (row.size() != 8) return false;
+    for (uint8_t x = 0; x < 8; x++)
+      if (!isWebColor(row[x].as<const char *>())) return false;
   }
+  if (out != nullptr) {
+    for (uint8_t y = 0; y < 8; y++) {
+      JsonArray row = rows[y].as<JsonArray>();
+      for (uint8_t x = 0; x < 8; x++) out[y * 8 + x] = parseColor(row[x].as<const char *>());
+    }
+  }
+  return true;
 }
 
 // ---- WiFi ------------------------------------------------------------------
@@ -251,17 +274,27 @@ static bool fetchScreens() {
   https.end();
   if (err) return false;
 
-  rotateSeconds = doc["rotateSeconds"] | DEFAULT_ROTATE_S;
-  uint32_t staleS = doc["staleAfter"] | DEFAULT_STALE_S;
-  staleAfterMs = staleS * 1000UL;
-
   JsonArray arr = doc["screens"].as<JsonArray>();
+  if (arr.size() == 0 || arr.size() > MAX_SCREENS) return false;
+
+  uint32_t staleS = doc["staleAfter"] | DEFAULT_STALE_S;
+  if (staleS == 0 || staleS > MAX_STALE_S) return false;
+
+  // Validate every rendered field before changing the active screens. Metadata
+  // such as ts/id is intentionally left to the stricter provider-side schema.
+  for (JsonObject s : arr) {
+    if (!isDisplayText(s["text"].as<const char *>()) ||
+        !isWebColor(s["color"].as<const char *>()) ||
+        !parseIcon(s["icon"].as<JsonArray>(), nullptr))
+      return false;
+  }
+
+  staleAfterMs = staleS * 1000UL;
   uint8_t n = 0;
   for (JsonObject s : arr) {
-    if (n >= MAX_SCREENS) break;
     strlcpy(screens[n].text, s["text"] | "", sizeof(screens[n].text));
     screens[n].textColor = parseColor(s["color"] | "#ffffff");
-    parseIcon(s["icon"] | "", screens[n].icon);
+    parseIcon(s["icon"].as<JsonArray>(), screens[n].icon);
     n++;
   }
   screenCount = n;
@@ -655,7 +688,7 @@ void loop() {
   }
 
   // Auto-advance unless the user paused rotation with a single middle click.
-  if (autoRotate && now - lastRotate >= (uint32_t)rotateSeconds * 1000UL) {
+  if (autoRotate && now - lastRotate >= SCREEN_ROTATION_INTERVAL_MS) {
     currentScreen = (currentScreen + 1) % total;
     lastRotate = now;
     lastLocalTick = now;

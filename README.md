@@ -20,17 +20,24 @@ They ride in the same rotation (see [Local screens](#local-screens)).
 Target hardware is the **Ulanzi TC001** (ESP32 + WS2812B matrix), but any ESP32
 board with a compatible 32×8 matrix works by adjusting the pins in `main.cpp`.
 
-## The contract
+## Payload contract
 
 Watchlight expects `GET {API_URL}` (sent with an `x-device-token` header) to return:
+
+- [Payload format](docs/payload.md) — canonical transport, fields, encoding, and
+  freshness behavior.
+- [JSON Schema](schema/watchlight-payload.schema.json) — machine-readable Draft
+  2020-12 validation.
+- [Example payload](examples/payload.json) — complete schema-valid JSON.
+
+At a glance, the response looks like this (the icon is abbreviated here):
 
 ```json
 {
   "ts": 1784027753,
   "staleAfter": 1800,
-  "rotateSeconds": 8,
   "screens": [
-    { "id": "users", "text": "258k", "color": "#3b82f6", "icon": "<384 hex chars>" }
+    { "id": "users", "text": "258k", "color": "#3b82f6", "icon": "<8×8 #rrggbb matrix>" }
   ]
 }
 ```
@@ -39,10 +46,13 @@ Watchlight expects `GET {API_URL}` (sent with an `x-device-token` header) to ret
 | :--- | :--- |
 | `ts` | epoch seconds when the numbers were read (for the server; the firmware tracks its own last-success clock) |
 | `staleAfter` | seconds of no successful fetch before the offline glyph replaces the screens |
-| `rotateSeconds` | seconds each screen is shown before advancing |
+| `screens[].id` | stable screen identifier; currently metadata for the firmware |
 | `screens[].text` | short string, pre-formatted for the display (`"258k"`, not `"258482"`) |
 | `screens[].color` | `#rrggbb` text color |
-| `screens[].icon` | 8×8 bitmap: 64 pixels × `rrggbb`, row-major, left→right, top→bottom (= 384 hex chars). `000000` is an off pixel. |
+| `screens[].icon` | 8×8 matrix of web colors: `icon[y][x]` is `#rrggbb`; `#000000` is an off pixel. |
+
+The rotation interval is device-local, not part of the payload. Set
+`SCREEN_ROTATION_SECONDS` in `src/config.h`; the default is 8 seconds.
 
 The device renders the icon on the left 8×8 and the text — a small pixel font —
 **centered** in the remaining 24px. Icons may use full RGB: gradients and
@@ -50,7 +60,7 @@ anti-aliased edges render fine (the panel is RGB per pixel), so a soft-edged 8×
 looks the part. The firmware never interprets the values — a screen is just pixels.
 
 **Why the bitmap travels in the payload:** so a new screen or icon is a server
-deploy, never a firmware flash. At ~1.6 KB per poll it's a rounding error.
+deploy, never a firmware flash. Typical payloads remain only a few kilobytes.
 
 ## Buttons
 
@@ -115,8 +125,8 @@ screens (clock, temp/humidity) keep rotating — they're never stale.
 
 1. Copy `src/secrets.example.h` → `src/secrets.h` and fill in your WiFi
    networks, `API_URL`, and `API_TOKEN`. `secrets.h` is gitignored.
-   Non-secret knobs (clock timezone, NTP servers) live in `src/config.h`, which
-   *is* committed — edit it in place.
+   Non-secret knobs (screen rotation, clock timezone, NTP servers, and temperature
+   calibration) live in `src/config.h`, which *is* committed — edit it in place.
 2. Build and flash — the task runner is [`mise`](https://mise.jdx.dev) (wrapping
    [PlatformIO](https://platformio.org)):
    ```bash

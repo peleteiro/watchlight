@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/peleteiro/watchlight/main/schema/watchlight-payload.schema.json",
+  "title": "Watchlight payload",
+  "description": "Freshness metadata and server-provided screens rendered by Watchlight.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ts", "staleAfter", "screens"],
+  "properties": {
+    "ts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp in seconds when the provider read the source data. The firmware treats it as metadata and measures freshness from its own last successful fetch.",
+      "examples": [1784027753]
+    },
+    "staleAfter": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967,
+      "default": 1800,
+      "description": "Maximum seconds without an accepted fetch before remote screens are replaced by the offline alert."
+    },
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "description": "Remote screens in display order.",
+      "items": {
+        "$ref": "#/$defs/screen"
+      }
+    }
+  },
+  "$defs": {
+    "rgbColor": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "description": "A web-style RGB color encoded as #rrggbb.",
+      "examples": ["#3B82F6", "#000000"]
+    },
+    "iconRow": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "description": "One icon row, ordered from left to right.",
+      "items": {
+        "$ref": "#/$defs/rgbColor"
+      }
+    },
+    "icon": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "description": "An 8×8 RGB icon. Rows are ordered top-to-bottom.",
+      "items": {
+        "$ref": "#/$defs/iconRow"
+      }
+    },
+    "screen": {
+      "title": "Screen",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "color", "icon"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Stable identifier for the screen. It should be unique within the payload.",
+          "examples": ["users"]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 15,
+          "pattern": "^[\\u0020-\\u007E]{0,15}$",
+          "description": "Pre-formatted printable ASCII text. The firmware stores at most 15 bytes; practical visual width is shorter.",
+          "examples": ["258k"]
+        },
+        "color": {
+          "$ref": "#/$defs/rgbColor",
+          "description": "Text color encoded as #rrggbb.",
+          "examples": ["#3b82f6"]
+        },
+        "icon": {
+          "$ref": "#/$defs/icon",
+          "description": "An 8×8 matrix of web-style RGB colors."
+        }
+      }
+    }
+  }
+}

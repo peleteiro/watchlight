@@ -3,6 +3,10 @@
 // Non-secret device configuration. Unlike secrets.h, this file IS committed — it
 // holds no credentials, only presentation/behavior knobs you may want to tweak.
 
+// Seconds each screen stays visible before auto-rotation advances. Applies to
+// both server-provided and local screens.
+#define SCREEN_ROTATION_SECONDS 8
+
 // POSIX timezone string for the clock. Default: São Paulo / Brazil (UTC-3, no DST).
 // Change to match where the display lives, e.g.:
 //   "PST8PDT,M3.2.0,M11.1.0"          US Pacific

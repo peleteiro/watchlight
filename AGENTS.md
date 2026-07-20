@@ -12,7 +12,8 @@ and lights an alert when it can't reach fresh data. It knows nothing about *what
 it shows — every screen (text, color, 8×8 icon) arrives fully formed from the
 server.
 
-Read `README.md` for the payload contract before touching rendering or fetch code.
+Read `docs/payload.md` and its JSON Schema before touching rendering or fetch
+code. `README.md` provides the project overview.
 
 ## Golden rules
 
@@ -51,8 +52,11 @@ Read `README.md` for the payload contract before touching rendering or fetch cod
 | Path | Purpose |
 | :--- | :--- |
 | `src/main.cpp` | The firmware: WiFi, HTTPS fetch, JSON parse, render, rotation, buttons (standby / deep sleep), local clock + sensor screens, offline glyph. |
-| `src/config.h` | Non-secret config (clock timezone, NTP servers). Committed — edit in place. |
+| `src/config.h` | Non-secret config (screen rotation, clock, sensors). Committed — edit in place. |
 | `src/secrets.example.h` | Template for credentials. Copy to `src/secrets.h` (gitignored). |
+| `docs/payload.md` | Canonical transport and JSON payload contract. |
+| `schema/watchlight-payload.schema.json` | JSON Schema Draft 2020-12 for provider payloads. |
+| `examples/payload.json` | Complete payload fixture that validates against the schema. |
 | `platformio.ini` | Board, framework, library deps, `upload_speed`. |
 | `.config/mise/tasks/` | File-based mise tasks for build, checks, formatting, flashing, monitoring, upgrades, and cleanup. |
 | `.agents/` | Shared agent skills, always-on rules, and the Antigravity MCP config. |

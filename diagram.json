@@ -67,6 +67,8 @@
     }
   ],
   "connections": [
+    ["esp:TX", "$serialMonitor:RX", "", []],
+    ["esp:RX", "$serialMonitor:TX", "", []],
     ["esp:32", "matrix:DIN", "green", []],
     ["esp:5V", "matrix:VDD", "red", []],
     ["esp:GND.1", "matrix:VSS", "black", []],
@@ -86,5 +88,9 @@
     ["esp:5V", "rtc:5V", "red", []],
     ["esp:GND.1", "rtc:GND", "black", []]
   ],
+  "serialMonitor": {
+    "display": "auto",
+    "newline": "lf"
+  },
   "dependencies": {}
 }

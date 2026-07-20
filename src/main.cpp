@@ -1,4 +1,4 @@
-// Atalaia — a watchman for a 32x8 pixel display.
+// Watchlight — a watchful light for a 32x8 pixel display.
 //
 // It polls a JSON endpoint, rotates through the screens it returns, and lights an
 // alert when it can no longer reach fresh data. The device is deliberately dumb:
@@ -211,14 +211,14 @@ static void syncClock() {
   configTzTime(TIMEZONE, NTP_SERVER_1, NTP_SERVER_2);
   struct tm t;
   if (!getLocalTime(&t, 5000)) {
-    Serial.println("[atalaia] NTP: no answer");
+    Serial.println("[watchlight] NTP: no answer");
     return;  // retry next window
   }
   rtc.adjust(DateTime(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec));
   clockValid = true;
   clockSynced = true;
   lastClockSync = millis();
-  Serial.printf("[atalaia] NTP ok: %04d-%02d-%02d %02d:%02d\n", t.tm_year + 1900, t.tm_mon + 1,
+  Serial.printf("[watchlight] NTP ok: %04d-%02d-%02d %02d:%02d\n", t.tm_year + 1900, t.tm_mon + 1,
                 t.tm_mday, t.tm_hour, t.tm_min);
 }
 
@@ -485,7 +485,7 @@ static void stepScreen(int8_t delta) {
 // Turn the panel on (redraw the current screen) or off (blank it, stop drawing).
 static void setDisplayOn(bool on) {
   displayOn = on;
-  Serial.printf("[atalaia] display %s\n", on ? "ON" : "STANDBY");
+  Serial.printf("[watchlight] display %s\n", on ? "ON" : "STANDBY");
   if (on) {
     matrix.setBrightness(BRIGHTNESS);
     needsRedraw = true;
@@ -498,7 +498,7 @@ static void setDisplayOn(bool on) {
 // Power the device down into deep sleep to save battery. The middle button wakes
 // it (which reboots into setup). Does not return.
 static void powerOff() {
-  Serial.println("[atalaia] power off — deep sleep");
+  Serial.println("[watchlight] power off — deep sleep");
   matrix.fillScreen(0);
   matrix.show();
 
@@ -568,7 +568,7 @@ static void handleButtons() {
     midClicks = 0;
     autoRotate = !autoRotate;
     lastRotate = now;
-    Serial.printf("[atalaia] autoRotate %s\n", autoRotate ? "ON" : "OFF");
+    Serial.printf("[watchlight] autoRotate %s\n", autoRotate ? "ON" : "OFF");
   }
 
   if (displayOn && pressedEdge[BTN_LEFT]) stepScreen(-1);
@@ -581,7 +581,7 @@ void setup() {
   gpio_hold_dis((gpio_num_t)BUZZER_PIN);  // release the hold set before a prior deep sleep
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);  // silence the piezo before anything else
-  Serial.printf("\n[atalaia] boot (wake cause %d)\n", (int)esp_sleep_get_wakeup_cause());
+  Serial.printf("\n[watchlight] boot (wake cause %d)\n", (int)esp_sleep_get_wakeup_cause());
 
   for (uint8_t i = 0; i < BTN_COUNT; i++) {
     pinMode(BTN_PINS[i], INPUT_PULLUP);
@@ -594,8 +594,8 @@ void setup() {
   matrix.show();
 
   Wire.begin(I2C_SDA, I2C_SCL);
-  Serial.printf("[atalaia] rtc.begin=%d lostPower=%d  sht.begin=%d\n", rtc.begin(), rtc.lostPower(),
-                sht.begin(0x44));
+  Serial.printf("[watchlight] rtc.begin=%d lostPower=%d  sht.begin=%d\n", rtc.begin(),
+                rtc.lostPower(), sht.begin(0x44));
   if (!rtc.lostPower()) clockValid = true;  // the RTC battery kept a real time
   batteryPct = batteryPercent();
 
@@ -603,7 +603,7 @@ void setup() {
     haveData = true;
     lastSuccess = millis();
   }
-  Serial.printf("[atalaia] boot fetch: %u screens, wifi=%d\n", screenCount,
+  Serial.printf("[watchlight] boot fetch: %u screens, wifi=%d\n", screenCount,
                 WiFi.status() == WL_CONNECTED);
   if (WiFi.status() == WL_CONNECTED) syncClock();  // set the RTC from NTP on boot
   lastPoll = millis();
@@ -631,7 +631,8 @@ void loop() {
       syncClock();
     DateTime t = rtc.now();
     Serial.printf(
-        "[atalaia] poll: screens=%u stale=%d clock=%02d:%02d temp=%.1f%c hum=%.1f batt=%u%% (adc "
+        "[watchlight] poll: screens=%u stale=%d clock=%02d:%02d temp=%.1f%c hum=%.1f batt=%u%% "
+        "(adc "
         "%d)\n",
         screenCount, isStale(), t.hour(), t.minute(), readTemperatureDisplay(),
         TEMP_FAHRENHEIT ? 'F' : 'C', sht.readHumidity(), batteryPct, analogRead(BATTERY_PIN));

@@ -4,7 +4,7 @@ trigger: always_on
 
 # Rule: the display must never lie
 
-Atalaia's core promise: it shows fresh data or it shows the offline glyph — never
+Watchlight's core promise: it shows fresh data or it shows the offline glyph — never
 a stale value dressed as current. When editing fetch, staleness, or render logic:
 
 - keep the `staleAfter` check authoritative; if the last successful fetch is older

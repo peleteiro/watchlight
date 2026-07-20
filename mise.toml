@@ -1,4 +1,4 @@
-# Atalaia — dev environment. Tasks are file-based scripts in .config/mise/tasks/.
+# Watchlight — dev environment. Tasks are file-based scripts in .config/mise/tasks/.
 [tools]
 # uv backs the pipx installs below (hermetic Python tooling, no system pipx).
 "uv" = "latest"

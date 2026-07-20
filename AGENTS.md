@@ -1,4 +1,4 @@
-# Atalaia — Agent Guide
+# Watchlight — Agent Guide
 
 Single source of truth for AI agents (Claude Code, Codex, Antigravity 2) working
 on this repo. `CLAUDE.md` is a symlink to this file; Codex and Antigravity read
@@ -6,10 +6,11 @@ it natively.
 
 ## What this is
 
-**Atalaia** is content-agnostic firmware for a 32×8 pixel display (Ulanzi TC001 /
-ESP32). It polls a JSON endpoint, rotates through the screens it returns, and
-lights an alert when it can't reach fresh data. It knows nothing about *what* it
-shows — every screen (text, color, 8×8 icon) arrives fully formed from the server.
+**Watchlight** is content-agnostic firmware for a 32×8 pixel display (Ulanzi
+TC001 / ESP32). It polls a JSON endpoint, rotates through the screens it returns,
+and lights an alert when it can't reach fresh data. It knows nothing about *what*
+it shows — every screen (text, color, 8×8 icon) arrives fully formed from the
+server.
 
 Read `README.md` for the payload contract before touching rendering or fetch code.
 
@@ -33,8 +34,8 @@ Read `README.md` for the payload contract before touching rendering or fetch cod
 5. **Single file, readable.** The firmware lives in `src/main.cpp`. Keep it one
    screen tall in your head; a junior should follow it. Split only if it truly
    grows past readability.
-6. **Comments in English.** Atalaia is a standalone, potentially-shared project —
-   unlike the Biblebox monorepo (Portuguese). Keep prose and code comments English.
+6. **Comments in English.** Watchlight is a public, standalone project. Keep
+   prose and code comments English.
 7. **Memory is bounded.** It's an ESP32. Prefer fixed arrays and streaming parses
    (`deserializeJson` from the stream) over buffering whole bodies. Respect
    `MAX_SCREENS`.
@@ -115,10 +116,3 @@ when the user explicitly asks.
 There are currently no project-specific MCP servers, so
 `.agents/mcp_config.json` contains an empty `mcpServers` object rather than
 inheriting unrelated web or infrastructure servers from another repository.
-
-## Consumers
-
-Atalaia is generic; Biblebox is one consumer. The Biblebox endpoint lives in the
-monorepo at `apps/api/src/devices/atalaia.ts` (`GET /devices/atalaia`, auth via
-`BIBLEBOX_ATALAIA_TOKEN`). Keep the contract in `README.md` and that endpoint in
-sync — they're the two ends of the same wire.

@@ -1,11 +1,11 @@
 ---
 name: build
-description: Build, check, format, flash, and monitor the Atalaia firmware via mise
+description: Build, check, format, flash, and monitor Watchlight via mise
 ---
 
 # build
 
-Compile, check, format, flash, and observe the Atalaia firmware. Always go through
+Compile, check, format, flash, and observe the Watchlight firmware. Always go through
 `mise`, never raw `pio` or `platformio`.
 
 ## Commands

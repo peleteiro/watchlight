@@ -3,7 +3,7 @@
 #pragma once
 
 // WiFi networks the device may join, in priority order. On boot (and whenever it
-// loses connection) Atalaia scans and joins the first one it can see. List every
+// loses connection) Watchlight scans and joins the first one it can see. List every
 // place the display travels to: home, office, wherever.
 struct WifiNetwork {
   const char *ssid;
@@ -16,7 +16,7 @@ static const WifiNetwork WIFI_NETWORKS[] = {
 
 // The endpoint that returns the screens payload (see README for the contract).
 // Must be HTTPS. The device is generic — this URL is where it points today.
-#define API_URL "https://api.example.com/devices/atalaia"
+#define API_URL "https://api.example.com/devices/watchlight"
 
 // Sent as the `x-device-token` header. Whoever holds it can read whatever the
 // endpoint returns, so scope it read-only on the server side.

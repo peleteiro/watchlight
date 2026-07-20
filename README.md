@@ -1,14 +1,14 @@
-# Atalaia
+# Watchlight
 
-A watchman for a 32×8 pixel display. It polls a JSON endpoint, rotates through the
-screens it returns, and lights an alert when it can no longer reach fresh data.
+A watchful light for a 32×8 pixel display. It polls a JSON endpoint, rotates
+through the screens it returns, and lights an alert when it can no longer reach
+fresh data.
 
-**Atalaia** is Portuguese for *watchtower* — the lookout post, and the sentinel who
-keeps watch from it. That's the device's one job, and the rule it never breaks:
-keep watch over the data and, the moment it can't see anything fresh, raise the
-alarm rather than show a stale number wearing a fresh face.
+The name **Watchlight** captures the device's one job and the rule it never breaks:
+keep watch over the data and, the moment it can't see anything fresh, light an
+alert rather than show a stale number wearing a fresh face.
 
-Atalaia is **content-agnostic**: it knows nothing about the *business* it shows.
+Watchlight is **content-agnostic**: it knows nothing about the *business* it shows.
 Every server screen arrives fully formed — text, color, and an 8×8 icon bitmap —
 so adding, removing, or restyling one is a server change, never a reflash. The
 firmware's only opinions are *how to draw* and *when to admit it's offline*.
@@ -22,7 +22,7 @@ board with a compatible 32×8 matrix works by adjusting the pins in `main.cpp`.
 
 ## The contract
 
-Atalaia expects `GET {API_URL}` (sent with an `x-device-token` header) to return:
+Watchlight expects `GET {API_URL}` (sent with an `x-device-token` header) to return:
 
 ```json
 {
@@ -106,10 +106,10 @@ reachable with the left/right buttons like any other screen.
 ## The offline glyph
 
 If the last successful fetch is older than `staleAfter` (or none has happened
-yet), Atalaia drops the server screens from the rotation and shows an amber warning
-triangle in their place. This is deliberate: a panel showing yesterday's number
-with a fresh face is worse than one that admits it's blind. The local screens
-(clock, temp/humidity) keep rotating — they're never stale.
+yet), Watchlight drops the server screens from the rotation and shows an amber
+warning triangle in their place. This is deliberate: a panel showing yesterday's
+number with a fresh face is worse than one that admits it's blind. The local
+screens (clock, temp/humidity) keep rotating — they're never stale.
 
 ## Setup
 

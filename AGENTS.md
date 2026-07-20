@@ -18,7 +18,7 @@ code. `README.md` provides the project overview.
 ## Golden rules
 
 1. **Task runner is `mise`.** Never call `pio` directly in docs or scripts — use
-   the `mise run build` / `check` / `lint` / `simulate-build` / `simulate` /
+   the `mise run build` / `check` / `lint` / `simulate:build` / `simulate` /
    `simulate:vscode` / `simulate:cli` / `upload` / `monitor` / `upgrade` / `clean`
    tasks. Tasks are file-based scripts in `.config/mise/tasks/`, never inline in
    `.mise.toml`.
@@ -82,7 +82,7 @@ Middle button wakes deep sleep via `ext0` on GPIO 27. `upload_speed` is 115200
 mise run build          # compile (pio run)
 mise run check          # static analysis + Wokwi diagram validation
 mise run lint           # format the firmware in place (clang-format)
-mise run simulate-build # compile the Wokwi target
+mise run simulate:build # compile the Wokwi target
 mise run simulate        # visual Wokwi simulator in VS Code (default)
 mise run simulate:vscode # explicitly select the VS Code simulator
 mise run simulate:cli    # headless Wokwi run; requires WOKWI_CLI_TOKEN

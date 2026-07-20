@@ -191,7 +191,7 @@ replace final orientation and electrical checks on real hardware.
    mise run build          # compile
    mise run check          # static analysis + Wokwi diagram validation
    mise run lint           # format the firmware (clang-format)
-   mise run simulate-build # compile the Wokwi target
+   mise run simulate:build # compile the Wokwi target
    mise run simulate        # visual Wokwi simulator in VS Code (default)
    mise run simulate:vscode # explicitly select the VS Code simulator
    mise run simulate:cli    # run headlessly (requires WOKWI_CLI_TOKEN)

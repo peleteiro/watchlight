@@ -9,5 +9,5 @@ if [[ -z "${WOKWI_CLI_TOKEN:-}" ]]; then
   exit 1
 fi
 
-mise run simulate-build
+mise run simulate:build
 exec wokwi-cli . --interactive --timeout 0

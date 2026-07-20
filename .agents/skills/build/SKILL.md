@@ -14,7 +14,7 @@ Always go through `mise`, never raw `pio` or `platformio`.
   libraries (several minutes); later runs are fast.
 - `mise run check` — run PlatformIO static analysis and validate `diagram.json`.
 - `mise run lint` — format the tracked firmware sources with clang-format.
-- `mise run simulate-build` — compile the Wokwi target. It uses the local
+- `mise run simulate:build` — compile the Wokwi target. It uses the local
   `src/secrets.h`, with WiFi association redirected to `Wokwi-GUEST`.
 - `mise run simulate` — run the default simulator, currently
   `mise run simulate:vscode`.

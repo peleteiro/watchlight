@@ -38,6 +38,9 @@ The compiler can't confirm these; check them the first time you flash real hardw
   flags in `src/main.cpp`.
 - **Data pin.** `MATRIX_PIN` defaults to the Ulanzi TC001's GPIO 32.
 - **Text fit.** Up to 4 characters fit beside the icon; longer values clip.
+- **Ambient brightness.** Cover and illuminate the GPIO 35 light sensor; confirm
+  the matrix switches between the normal value and 25% of it, then calibrate the
+  raw enter/exit thresholds in `src/config.h` if needed.
 - **Offline glyph.** Pull the network or point `API_URL` at a dead host and
   confirm the amber alert replaces the screens after `staleAfter`.
 
@@ -48,6 +51,6 @@ build fails on a missing include — that's expected, not a bug.
 
 The Wokwi artifact contains the compiled API configuration from `secrets.h` and
 must stay private. The simulator models the matrix, buttons, buzzer pin, battery
-ADC, and basic RTC behavior (using a DS1307 stand-in for the DS3231), but not the
-TC001's exact SHT3x part or DS3231-specific behavior. It does not replace final
-checks on physical hardware.
+and ambient-light ADC inputs, and basic RTC behavior (using a DS1307 stand-in for
+the DS3231), but not the TC001's exact GL5516 response, SHT3x part, or
+DS3231-specific behavior. It does not replace final checks on physical hardware.

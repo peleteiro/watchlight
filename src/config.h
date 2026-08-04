@@ -3,6 +3,18 @@
 // Non-secret device configuration. Unlike secrets.h, this file IS committed — it
 // holds no credentials, only presentation/behavior knobs you may want to tweak.
 
+// Matrix brightness uses the NeoPixel 0-255 scale. The on-board ambient-light
+// sensor reduces the normal level to this percentage when the room is dark.
+#define DISPLAY_BRIGHTNESS 40
+#define DARK_BRIGHTNESS_PERCENT 25
+
+// The TC001's light sensor returns a higher 12-bit ADC reading as the room gets
+// brighter. Separate enter/exit thresholds add hysteresis so the display does not
+// flicker around one boundary. These are starting points: use `mise run monitor`
+// in known dark/light conditions and tune them for the physical device if needed.
+#define AMBIENT_DARK_ADC_ENTER 1800
+#define AMBIENT_DARK_ADC_EXIT 2200
+
 // Seconds each screen stays visible before auto-rotation advances. Applies to
 // both server-provided and local screens.
 #define SCREEN_ROTATION_SECONDS 8

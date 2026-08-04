@@ -92,6 +92,21 @@ back on.
 The pins (left `26` / middle `27` / right `14`) match the TC001. The piezo buzzer
 (`15`) is held low at boot so it stays quiet.
 
+## Automatic brightness
+
+The TC001 has a **GL5516 ambient-light sensor on GPIO 35**. Watchlight is
+configured to average eight readings every 500ms and lower the matrix brightness
+value from `40` to `10` in a dark room — **25% of the configured normal value**.
+It returns to normal only after the reading crosses a separate light threshold,
+so sensor noise around one boundary cannot make the display flicker between
+levels.
+
+The two 12-bit ADC thresholds are starting points because the LDR and enclosure
+vary between devices. `AMBIENT_DARK_ADC_ENTER` and `AMBIENT_DARK_ADC_EXIT` live
+in `src/config.h`. After flashing, use `mise run monitor` to capture the raw
+reading at boot in known dark and light conditions; state transitions and regular
+poll logs also include the reading and chosen brightness.
+
 ## Local screens
 
 The device also renders a few screens from data it reads itself, so they work with
@@ -131,7 +146,7 @@ screens (clock, temp/humidity) keep rotating — they're never stale.
 The repository includes a Wokwi circuit for firmware development without a
 physical TC001. It runs the real `src/main.cpp` against a simulated ESP32,
 32×8 serpentine WS2812 matrix, three active-low buttons, buzzer, and adjustable
-battery input.
+battery and ambient-light inputs.
 
 The Wokwi target deliberately uses the local `src/secrets.h`: `API_URL`,
 `API_TOKEN`, and `API_ROOT_CA` are the same values used by the physical device.
@@ -157,8 +172,10 @@ monitor actions.
 
 Use the left/right arrow keys to navigate and the space bar for the middle
 button. The battery potentiometer drives GPIO 34; turn it down to exercise the
-low-battery screen. Button bounce remains enabled so the firmware's real debounce
-logic is exercised.
+low-battery screen. The ambient-light potentiometer drives GPIO 35; turn it below
+the dark threshold to reduce brightness to 25%, then above the light threshold to
+restore it. Button bounce remains enabled so the firmware's real debounce logic
+is exercised.
 
 For headless terminal runs, create a Wokwi CI token and configure it locally:
 
@@ -171,20 +188,22 @@ then run `mise run simulate:cli`. The Wokwi CLI itself is installed by `mise`;
 `mise.local.toml` and its optional lockfile are gitignored and preserved by
 `mise run clean`.
 
-The current circuit models the matrix, buttons, buzzer, battery ADC, and clock.
-Wokwi's DS1307 stands in for the TC001's DS3231 because both expose the basic RTC
-behavior through I2C address `0x68`; DS3231-specific behavior remains outside the
-simulator's scope. Wokwi does not provide the exact SHT3x part, so the
-temperature/humidity screen still needs hardware verification. Wokwi also cannot
-replace final orientation and electrical checks on real hardware.
+The current circuit models the matrix, buttons, buzzer, battery ADC,
+ambient-light ADC, and clock. An adjustable potentiometer stands in for the
+TC001's exact GL5516 response. Wokwi's DS1307 stands in for the TC001's DS3231
+because both expose the basic RTC behavior through I2C address `0x68`;
+DS3231-specific behavior remains outside the simulator's scope. Wokwi does not
+provide the exact SHT3x part, so the temperature/humidity screen still needs
+hardware verification. Wokwi also cannot replace final orientation and
+electrical checks on real hardware.
 
 ## Setup
 
 1. Copy `src/secrets.example.h` → `src/secrets.h` and fill in your WiFi
    networks, `API_URL`, and `API_TOKEN`. `secrets.h` is gitignored.
-   Non-secret knobs (screen rotation, fresh/stale polling, clock timezone, NTP
-   servers, and temperature calibration) live in `src/config.h`, which *is*
-   committed — edit it in place.
+   Non-secret knobs (brightness and ambient-light thresholds, screen rotation,
+   fresh/stale polling, clock timezone, NTP servers, and temperature calibration)
+   live in `src/config.h`, which *is* committed — edit it in place.
 2. Build and flash — the task runner is [`mise`](https://mise.jdx.dev) (wrapping
    [PlatformIO](https://platformio.org)):
    ```bash
@@ -217,6 +236,9 @@ Confirmed on the Ulanzi TC001. On a different board, check these first:
   pull-ups); piezo buzzer `15`, held low so it stays silent.
 - **Sensors.** I2C `SDA 21` / `SCL 22`; SHT3x temp/humidity at `0x44`, DS3231 RTC
   at `0x68`.
+- **Ambient light.** GL5516 LDR on ADC pin `35`; darker rooms produce lower raw
+  readings. Tune the enter/exit thresholds in `src/config.h` from values printed
+  by `mise run monitor` on the physical device.
 - **Battery.** Read on ADC pin `34`; the empty/full raw values in `main.cpp` are a
   starting point — calibrate from `mise run monitor` (`batt=NN% (adc XXXX)`). The
   SHT3x reads a few degrees high from nearby self-heating.
@@ -227,7 +249,7 @@ Confirmed on the Ulanzi TC001. On a different board, check these first:
 
 The clock digits, calendar, thermometer, and the °/% marks are hand-drawn bitmaps
 in `main.cpp` — tweak them there for a different look. `mise run monitor` prints
-boot, WiFi, fetch, NTP, sensor, and button events for troubleshooting.
+boot, WiFi, fetch, NTP, sensor, brightness, and button events for troubleshooting.
 
 ## References & links
 

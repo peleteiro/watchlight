@@ -52,6 +52,13 @@
       "attrs": { "value": "685" }
     },
     {
+      "type": "wokwi-potentiometer",
+      "id": "ambientLight",
+      "top": 432,
+      "left": 355.2,
+      "attrs": { "value": "700" }
+    },
+    {
       "type": "wokwi-buzzer",
       "id": "buzzer",
       "top": 307.2,
@@ -81,6 +88,9 @@
     ["esp:34", "battery:SIG", "orange", []],
     ["esp:3V3", "battery:VCC", "red", []],
     ["battery:GND", "esp:GND.1", "black", []],
+    ["esp:35", "ambientLight:SIG", "yellow", []],
+    ["esp:3V3", "ambientLight:VCC", "red", []],
+    ["ambientLight:GND", "esp:GND.1", "black", []],
     ["esp:15", "buzzer:2", "purple", []],
     ["buzzer:1", "esp:GND.1", "black", []],
     ["esp:21", "rtc:SDA", "blue", []],

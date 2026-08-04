@@ -53,7 +53,7 @@ code. `README.md` provides the project overview.
 | Path | Purpose |
 | :--- | :--- |
 | `src/main.cpp` | The firmware: WiFi, HTTPS fetch, JSON parse, render, rotation, buttons (standby / deep sleep), local clock + sensor screens, offline glyph. |
-| `src/config.h` | Non-secret config (screen rotation, polling, clock, sensors). Committed — edit in place. |
+| `src/config.h` | Non-secret config (brightness, screen rotation, polling, clock, sensors). Committed — edit in place. |
 | `src/secrets.example.h` | Template for credentials. Copy to `src/secrets.h` (gitignored). |
 | `mise.local.example.toml` | Template for developer-local mise secrets such as `WOKWI_CLI_TOKEN`; copy to ignored `mise.local.toml`. |
 | `docs/payload.md` | Canonical transport and JSON payload contract. |
@@ -72,9 +72,10 @@ code. `README.md` provides the project overview.
 
 Matrix 32×8 on GPIO 32, **serpentine** (`NEO_MATRIX_ZIGZAG` — not `PROGRESSIVE`).
 Buttons active-low: left 26, middle 27, right 14. Piezo buzzer 15 (held low or it
-squeals). I2C `SDA 21` / `SCL 22`: SHT3x temp/humidity `0x44`, DS3231 RTC `0x68`.
-Middle button wakes deep sleep via `ext0` on GPIO 27. `upload_speed` is 115200
-(higher was flaky). Full notes in `README.md`.
+squeals). GL5516 ambient-light sensor on ADC GPIO 35. I2C `SDA 21` / `SCL 22`:
+SHT3x temp/humidity `0x44`, DS3231 RTC `0x68`. Middle button wakes deep sleep via
+`ext0` on GPIO 27. `upload_speed` is 115200 (higher was flaky). Full notes in
+`README.md`; calibrate the light thresholds after flashing real hardware.
 
 ## Workflow
 

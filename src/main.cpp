@@ -32,7 +32,6 @@
 // rows run right-to-left. With PROGRESSIVE instead, a compact drawing splits into
 // a left half and a mirrored right half.
 static const uint8_t MATRIX_PIN = 32;
-static const uint8_t BRIGHTNESS = 40;  // 0-255; the panel is bright up close.
 
 Adafruit_NeoMatrix matrix(32, 8, MATRIX_PIN,
                           NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
@@ -58,6 +57,9 @@ static const uint8_t BUZZER_PIN = 15;
 // glyph is baked in).
 static const uint8_t I2C_SDA = 21;
 static const uint8_t I2C_SCL = 22;
+// The GL5516 ambient-light sensor is an analog divider on ADC1. Its reading rises
+// with ambient light, so low values mean the room is dark.
+static const uint8_t AMBIENT_LIGHT_PIN = 35;
 #ifdef WATCHLIGHT_WOKWI
 // Wokwi does not model the DS3231, so its compatible DS1307 stands in for clock
 // rendering. Physical builds continue to use the TC001's real DS3231.
@@ -73,6 +75,13 @@ static_assert(POLL_INTERVAL_FRESH_SECONDS > 0 && POLL_INTERVAL_FRESH_SECONDS <= 
               "POLL_INTERVAL_FRESH_SECONDS must fit in milliseconds");
 static_assert(POLL_INTERVAL_STALE_SECONDS > 0 && POLL_INTERVAL_STALE_SECONDS <= UINT32_MAX / 1000UL,
               "POLL_INTERVAL_STALE_SECONDS must fit in milliseconds");
+static_assert(DISPLAY_BRIGHTNESS > 0 && DISPLAY_BRIGHTNESS <= 255,
+              "DISPLAY_BRIGHTNESS must be between 1 and 255");
+static_assert(DARK_BRIGHTNESS_PERCENT > 0 && DARK_BRIGHTNESS_PERCENT <= 100,
+              "DARK_BRIGHTNESS_PERCENT must be between 1 and 100");
+static_assert(AMBIENT_DARK_ADC_ENTER >= 0 && AMBIENT_DARK_ADC_ENTER < AMBIENT_DARK_ADC_EXIT &&
+                  AMBIENT_DARK_ADC_EXIT <= 4095,
+              "ambient-light thresholds must be ordered 12-bit ADC values");
 static const uint32_t POLL_INTERVAL_FRESH_MS = (uint32_t)POLL_INTERVAL_FRESH_SECONDS * 1000UL;
 static const uint32_t POLL_INTERVAL_STALE_MS = (uint32_t)POLL_INTERVAL_STALE_SECONDS * 1000UL;
 static const uint8_t MAX_SCREENS = 16;  // caps memory; server sends few
@@ -82,6 +91,9 @@ static const uint32_t MAX_STALE_S = UINT32_MAX / 1000UL;  // avoid overflow conv
 
 static const uint32_t CLOCK_SYNC_MS = 12UL * 3600 * 1000;  // re-sync RTC from NTP twice a day
 static const uint16_t TEMPHUM_REFRESH_MS = 2000;           // how often the sensor screen re-reads
+static const uint16_t AMBIENT_LIGHT_SAMPLE_MS = 500;
+static const uint8_t AMBIENT_LIGHT_SAMPLES = 8;
+static const uint8_t DARK_BRIGHTNESS = (DISPLAY_BRIGHTNESS * DARK_BRIGHTNESS_PERCENT + 99) / 100;
 
 // Battery. The TC001 reads its LiPo on an ADC pin; the pin and the empty/full raw
 // values are board-specific — calibrate on hardware (log analogRead(BATTERY_PIN)
@@ -126,6 +138,9 @@ static bool clockSynced = false;    // NTP has set the RTC at least once this bo
 static uint32_t lastClockSync = 0;  // millis() of the last NTP sync
 static uint32_t lastLocalTick = 0;  // paces the in-place refresh of the active local screen
 static uint8_t batteryPct = 100;    // battery %, refreshed each poll
+static uint32_t lastAmbientLightSample = 0;
+static uint16_t ambientLightRaw = 0;
+static bool ambientDark = false;
 
 // Glyphs baked into the firmware. The alert is drawn when we're offline (no
 // payload to pull an icon from). The thermometer marks the sensor screen and is
@@ -509,6 +524,32 @@ static uint8_t batteryPercent() {
 
 static bool batteryLow() { return batteryPct <= LOW_BATTERY_PCT; }
 
+// Average a small burst of ADC reads, then use separate dark/light thresholds so
+// sensor noise around a boundary cannot make the matrix brightness chatter.
+static void updateAmbientBrightness(bool force = false) {
+  uint32_t now = millis();
+  if (!force && now - lastAmbientLightSample < AMBIENT_LIGHT_SAMPLE_MS) return;
+  lastAmbientLightSample = now;
+
+  uint32_t sum = 0;
+  for (uint8_t i = 0; i < AMBIENT_LIGHT_SAMPLES; i++) sum += analogRead(AMBIENT_LIGHT_PIN);
+  ambientLightRaw = sum / AMBIENT_LIGHT_SAMPLES;
+
+  bool wasDark = ambientDark;
+  if (ambientDark) {
+    if (ambientLightRaw >= AMBIENT_DARK_ADC_EXIT) ambientDark = false;
+  } else if (ambientLightRaw <= AMBIENT_DARK_ADC_ENTER) {
+    ambientDark = true;
+  }
+
+  if (!force && ambientDark == wasDark) return;
+  uint8_t brightness = ambientDark ? DARK_BRIGHTNESS : DISPLAY_BRIGHTNESS;
+  matrix.setBrightness(brightness);
+  needsRedraw = true;
+  Serial.printf("[watchlight] light: adc=%u %s brightness=%u\n", (unsigned)ambientLightRaw,
+                ambientDark ? "DARK" : "LIGHT", (unsigned)brightness);
+}
+
 // Local screen, only present when the battery is low: a gray battery whose red bar
 // breathes (fades in/out), with the percentage beside it.
 static void drawBattery() {
@@ -577,8 +618,7 @@ static void setDisplayOn(bool on) {
   displayOn = on;
   Serial.printf("[watchlight] display %s\n", on ? "ON" : "STANDBY");
   if (on) {
-    matrix.setBrightness(BRIGHTNESS);
-    needsRedraw = true;
+    updateAmbientBrightness(true);
   } else {
     matrix.fillScreen(0);
     matrix.show();
@@ -677,8 +717,9 @@ void setup() {
     pinMode(BTN_PINS[i], INPUT_PULLUP);
     btnState[i] = digitalRead(BTN_PINS[i]) == LOW;  // held at boot (wake press) → no phantom edge
   }
+  pinMode(AMBIENT_LIGHT_PIN, INPUT);
   matrix.begin();
-  matrix.setBrightness(BRIGHTNESS);
+  updateAmbientBrightness(true);
   matrix.setTextColor(matrix.Color(255, 255, 255));
   matrix.fillScreen(0);
   matrix.show();
@@ -715,6 +756,8 @@ void loop() {
     return;
   }
 
+  updateAmbientBrightness();
+
   if (now - lastPoll >= pollIntervalMs()) {
     lastPoll = now;
     batteryPct = batteryPercent();
@@ -732,10 +775,11 @@ void loop() {
     }
     Serial.printf(
         "[watchlight] poll: screens=%u stale=%d clock=%s temp=%.1f%c hum=%.1f batt=%u%% "
-        "(adc "
-        "%d)\n",
-        screenCount, isStale(), clockText, readTemperatureDisplay(), TEMP_FAHRENHEIT ? 'F' : 'C',
-        sht.readHumidity(), batteryPct, analogRead(BATTERY_PIN));
+        "(adc %d) light=%u dark=%d brightness=%u\n",
+        (unsigned)screenCount, isStale(), clockText, readTemperatureDisplay(),
+        TEMP_FAHRENHEIT ? 'F' : 'C', sht.readHumidity(), (unsigned)batteryPct,
+        analogRead(BATTERY_PIN), (unsigned)ambientLightRaw, ambientDark,
+        (unsigned)(ambientDark ? DARK_BRIGHTNESS : DISPLAY_BRIGHTNESS));
   }
 
   uint8_t total = totalSlots();

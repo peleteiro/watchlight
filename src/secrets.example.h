@@ -33,3 +33,11 @@ static const WifiNetwork WIFI_NETWORKS[] = {
 //   -----END CERTIFICATE-----
 //   )EOF"
 #define API_ROOT_CA ""
+
+// Local hardware screens: the clock (DS3231 RTC) and the temperature/humidity
+// panel (SHT3x). They live here rather than in config.h because they are a
+// per-device choice — one unit sits next to a real clock and only needs the
+// server screens, another is the clock. Set a flag to 0 to drop that screen from
+// the rotation. The low-battery warning and the offline glyph are always shown.
+#define SHOW_CLOCK_SCREEN 1
+#define SHOW_TEMPHUM_SCREEN 1

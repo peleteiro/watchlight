@@ -54,7 +54,7 @@ code. `README.md` provides the project overview.
 | :--- | :--- |
 | `src/main.cpp` | The firmware: WiFi, HTTPS fetch, JSON parse, render, rotation, buttons (standby / deep sleep), local clock + sensor screens, offline glyph. |
 | `src/config.h` | Non-secret config (brightness, screen rotation, polling, clock, sensors). Committed — edit in place. |
-| `src/secrets.example.h` | Template for credentials. Copy to `src/secrets.h` (gitignored). |
+| `src/secrets.example.h` | Template for credentials plus the per-device local-screen flags (`SHOW_CLOCK_SCREEN`, `SHOW_TEMPHUM_SCREEN`). Copy to `src/secrets.h` (gitignored). |
 | `mise.local.example.toml` | Template for developer-local mise secrets such as `WOKWI_CLI_TOKEN`; copy to ignored `mise.local.toml`. |
 | `docs/payload.md` | Canonical transport and JSON payload contract. |
 | `schema/watchlight-payload.schema.json` | JSON Schema Draft 2020-12 for provider payloads. |

@@ -133,13 +133,20 @@ Numbers on these screens use the same hand-drawn 3×5 digits, for a consistent
 pixel-clock look. They sit after the server screens in the rotation and are
 reachable with the left/right buttons like any other screen.
 
+The clock and the temperature/humidity panel are **optional per device**:
+`SHOW_CLOCK_SCREEN` and `SHOW_TEMPHUM_SCREEN` in `src/secrets.h` (see
+`src/secrets.example.h`). Set either to `0` and that screen leaves the rotation —
+useful when the display hangs next to a real clock, or only ever shows server
+data. They live in the gitignored `secrets.h` precisely because the answer
+differs per unit. The low-battery warning and the offline glyph are always shown.
+
 ## The offline glyph
 
 If the last successful fetch is older than `staleAfter` (or none has happened
 yet), Watchlight drops the server screens from the rotation and shows an amber
 warning triangle in their place. This is deliberate: a panel showing yesterday's
 number with a fresh face is worse than one that admits it's blind. The local
-screens (clock, temp/humidity) keep rotating — they're never stale.
+screens you kept enabled keep rotating — they're never stale.
 
 ## Wokwi simulation
 
@@ -200,7 +207,8 @@ electrical checks on real hardware.
 ## Setup
 
 1. Copy `src/secrets.example.h` → `src/secrets.h` and fill in your WiFi
-   networks, `API_URL`, and `API_TOKEN`. `secrets.h` is gitignored.
+   networks, `API_URL`, and `API_TOKEN`. `secrets.h` is gitignored, and also
+   carries the per-device `SHOW_CLOCK_SCREEN` / `SHOW_TEMPHUM_SCREEN` flags.
    Non-secret knobs (brightness and ambient-light thresholds, screen rotation,
    fresh/stale polling, clock timezone, NTP servers, and temperature calibration)
    live in `src/config.h`, which *is* committed — edit it in place.

@@ -26,6 +26,15 @@
 #include "config.h"
 #include "secrets.h"
 
+// The local hardware screens are opt-out per device (see secrets.example.h). A
+// secrets.h written before the flags existed keeps both, as it did before.
+#ifndef SHOW_CLOCK_SCREEN
+#define SHOW_CLOCK_SCREEN 1
+#endif
+#ifndef SHOW_TEMPHUM_SCREEN
+#define SHOW_TEMPHUM_SCREEN 1
+#endif
+
 // ---- Hardware (Ulanzi TC001) -----------------------------------------------
 // The matrix data pin and orientation flags below match the TC001, confirmed on
 // hardware: origin top-left, and the rows are wired serpentine (ZIGZAG) — odd
@@ -575,13 +584,33 @@ static uint32_t pollIntervalMs() {
   return isStale() ? POLL_INTERVAL_STALE_MS : POLL_INTERVAL_FRESH_MS;
 }
 
-// The rotation is [primary slots] + [clock] + [temp/humidity] + [battery, if low].
-// The primary slots are the server screens when fresh, or a single offline glyph
-// when stale — so we never show a stale server number, but the local screens stay
-// visible either way.
+// The rotation is [primary slots] + [the local screens that are on]. The primary
+// slots are the server screens when fresh, or a single offline glyph when stale —
+// so we never show a stale server number, but the local screens stay visible
+// either way. The clock and temp/humidity panels are opt-out per device; the
+// battery warning only appears while the charge is low, always last.
+enum LocalScreen { LOCAL_CLOCK, LOCAL_TEMPHUM, LOCAL_BATTERY, LOCAL_NONE };
+
 static uint8_t primarySlots() { return isStale() ? 1 : screenCount; }
-static uint8_t localSlots() { return batteryLow() ? 3 : 2; }  // clock, temp/hum, [battery]
+static uint8_t localSlots() {
+  return (SHOW_CLOCK_SCREEN ? 1 : 0) + (SHOW_TEMPHUM_SCREEN ? 1 : 0) + (batteryLow() ? 1 : 0);
+}
 static uint8_t totalSlots() { return primarySlots() + localSlots(); }
+
+// Which local screen sits at `slot`, counting from the first one after the
+// primary slots. Disabled screens simply aren't in the sequence.
+static LocalScreen localScreenAt(uint8_t slot) {
+  if (SHOW_CLOCK_SCREEN) {
+    if (slot == 0) return LOCAL_CLOCK;
+    slot--;
+  }
+  if (SHOW_TEMPHUM_SCREEN) {
+    if (slot == 0) return LOCAL_TEMPHUM;
+    slot--;
+  }
+  if (batteryLow() && slot == 0) return LOCAL_BATTERY;
+  return LOCAL_NONE;
+}
 
 static void drawCurrent() {
   uint8_t primary = primarySlots();
@@ -591,15 +620,17 @@ static void drawCurrent() {
     else
       drawScreen(screens[currentScreen]);
   } else {
-    switch (currentScreen - primary) {
-      case 0:
+    switch (localScreenAt(currentScreen - primary)) {
+      case LOCAL_CLOCK:
         drawClock();
         break;
-      case 1:
+      case LOCAL_TEMPHUM:
         drawTempHum();
         break;
-      default:
+      case LOCAL_BATTERY:
         drawBattery();
+        break;
+      default:
         break;
     }
   }
@@ -790,8 +821,9 @@ void loop() {
 
   // Low battery + rotation paused → force the battery warning to the front (and
   // hold it there). When rotation is on, the battery screen just joins the cycle.
-  if (batteryLow() && !autoRotate && currentScreen != primary + 2) {
-    currentScreen = primary + 2;
+  uint8_t batterySlot = total - 1;  // the battery screen is always the last slot
+  if (batteryLow() && !autoRotate && currentScreen != batterySlot) {
+    currentScreen = batterySlot;
     lastLocalTick = now;
     needsRedraw = true;
   }
@@ -809,17 +841,15 @@ void loop() {
     needsRedraw = true;
   }
 
-  // Local screens refresh in place while shown: the clock's colon fades, the sensor
-  // screen re-reads, the low-battery bar breathes.
-  if (currentScreen == primary && now - lastLocalTick >= 60) {  // clock (colon fade)
-    lastLocalTick = now;
-    needsRedraw = true;
-  } else if (currentScreen == primary + 1 && now - lastLocalTick >= TEMPHUM_REFRESH_MS) {
-    lastLocalTick = now;  // sensor readings
-    needsRedraw = true;
-  } else if (currentScreen == primary + 2 && now - lastLocalTick >= 60) {  // battery (bar fade)
-    lastLocalTick = now;
-    needsRedraw = true;
+  // Local screens refresh in place while shown: the sensor screen re-reads every
+  // couple of seconds, the clock's colon and the low-battery bar fade at ~16fps.
+  if (currentScreen >= primary) {
+    uint16_t refreshMs =
+        localScreenAt(currentScreen - primary) == LOCAL_TEMPHUM ? TEMPHUM_REFRESH_MS : 60;
+    if (now - lastLocalTick >= refreshMs) {
+      lastLocalTick = now;
+      needsRedraw = true;
+    }
   }
 
   if (needsRedraw) {

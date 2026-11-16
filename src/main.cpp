@@ -307,9 +307,12 @@ static bool fetchScreens() {
     Serial.println("[watchlight] fetch: HTTPS setup failed");
     return false;
   }
-  https.addHeader("x-device-token", API_TOKEN);
+  char authHeader[160];
+  snprintf(authHeader, sizeof(authHeader), "Bearer %s", API_TOKEN);
+  https.addHeader("Authorization", authHeader);
 
-  int code = https.GET();
+  // The endpoint expects POST; there is no request body to send.
+  int code = https.POST("");
   if (code != 200) {
     Serial.printf("[watchlight] fetch: HTTP %d\n", code);
     https.end();

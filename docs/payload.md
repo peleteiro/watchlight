@@ -14,9 +14,9 @@ Watchlight makes an HTTPS request using the values compiled into
 
 | Item | Requirement |
 | :--- | :--- |
-| Method | `GET` |
+| Method | `POST` (no request body) |
 | URL | `API_URL` |
-| Authentication | `x-device-token: {API_TOKEN}` |
+| Authentication | `Authorization: Bearer {API_TOKEN}` |
 | Success | HTTP `200` with a JSON response body |
 
 Any connection error, non-`200` response, or malformed JSON is a failed fetch.

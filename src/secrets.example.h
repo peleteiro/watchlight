@@ -18,8 +18,8 @@ static const WifiNetwork WIFI_NETWORKS[] = {
 // Must be HTTPS. The device is generic — this URL is where it points today.
 #define API_URL "https://api.example.com/devices/watchlight"
 
-// Sent as the `x-device-token` header. Whoever holds it can read whatever the
-// endpoint returns, so scope it read-only on the server side.
+// Sent as `Authorization: Bearer {API_TOKEN}`. Whoever holds it can read whatever
+// the endpoint returns, so scope it read-only on the server side.
 #define API_TOKEN "replace-with-your-token"
 
 // Optional: PEM root CA to validate the endpoint's TLS certificate. Leave empty

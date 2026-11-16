@@ -22,7 +22,7 @@ board with a compatible 32×8 matrix works by adjusting the pins in `main.cpp`.
 
 ## Payload contract
 
-Watchlight expects `GET {API_URL}` (sent with an `x-device-token` header) to return:
+Watchlight expects `POST {API_URL}` (sent with an `Authorization: Bearer` header) to return:
 
 - [Payload format](docs/payload.md) — canonical transport, fields, encoding, and
   freshness behavior.
